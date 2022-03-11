@@ -49,6 +49,13 @@ public:
         LessThan
     };
 
+    inline static const std::unordered_map<Op, std::int64_t> precedence = {
+        {Op::LessThan, 10},
+        {Op::Add, 20},
+        {Op::Minus, 20},
+        {Op::Multiply, 40},
+    };
+
     BinExpr(Op && op,
             std::unique_ptr<Expr> && lhs,
             std::unique_ptr<Expr> && rhs)
@@ -56,12 +63,6 @@ public:
     {}
 
 private:
-    inline static const std::unordered_map<Op, std::int64_t> precedence = {
-        {Op::LessThan, 10},
-        {Op::Add, 20},
-        {Op::Minus, 20},
-        {Op::Multiply, 40},
-    };
     Op op;
     std::unique_ptr<Expr> lhs;
     std::unique_ptr<Expr> rhs;

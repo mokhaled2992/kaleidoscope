@@ -4,15 +4,75 @@
 #include "lexer.h"
 #include "util/overload.h"
 
+#include <optional>
+
 
 namespace mk
 {
 Parser::Parser(Lexer & lexer) : lexer(lexer) {}
 
-std::unique_ptr<ast::Expr>
-Parser::parse_bin_expr_rhs(std::unique_ptr<ast::Expr> && lhs)
+
+std::optional<ast::BinExpr::Op> Parser::parse_bin_op()
 {
-    return nullptr;
+    std::optional<ast::BinExpr::Op> op;
+    if (std::holds_alternative<Add>(lexer.current()))
+    {
+        op = ast::BinExpr::Op::Add;
+    }
+    else if (std::holds_alternative<Minus>(lexer.current()))
+    {
+        op = ast::BinExpr::Op::Minus;
+    }
+    else if (std::holds_alternative<Multiply>(lexer.current()))
+    {
+        op = ast::BinExpr::Op::Multiply;
+    }
+    else if (std::holds_alternative<LessThan>(lexer.current()))
+    {
+        op = ast::BinExpr::Op::LessThan;
+    }
+
+    return op;
+}
+
+std::optional<std::int64_t>
+Parser::get_precedence(const std::optional<ast::BinExpr::Op> & op)
+{
+    if (!op)
+        return {};
+
+    auto it = ast::BinExpr::precedence.find(*op);
+    if (it == ast::BinExpr::precedence.cend())
+        return {};
+    return it->second;
+}
+
+std::unique_ptr<ast::Expr>
+Parser::parse_bin_expr_rhs(std::int64_t previous,
+                           std::unique_ptr<ast::Expr> && lhs)
+{
+    while (true)
+    {
+        auto current = parse_bin_op();
+
+        if (get_precedence(current) < previous)
+            return std::move(lhs);
+
+        lexer.next();
+
+        auto rhs = parse_primary_expr();
+
+        auto next = parse_bin_op();
+
+        if (get_precedence(next) > get_precedence(current))
+        {
+            rhs = parse_bin_expr_rhs(*get_precedence(current) + 1,
+                                     std::move(rhs));
+        }
+        lhs = std::make_unique<ast::BinExpr>(std::move(*current),
+                                             std::move(lhs),
+                                             std::move(rhs));
+    }
 }
 
 std::unique_ptr<ast::Expr> Parser::parse_call_expr(std::string && name)
@@ -20,11 +80,7 @@ std::unique_ptr<ast::Expr> Parser::parse_call_expr(std::string && name)
     std::vector<std::unique_ptr<ast::Expr>> args;
     while (true)
     {
-        if (std::holds_alternative<Empty>(lexer.current()))
-        {
-            break;
-        }
-        else if (std::holds_alternative<Right>(lexer.current()))
+        if (std::holds_alternative<Right>(lexer.current()))
         {
             lexer.next();
             return std::make_unique<ast::CallExpr>(std::move(name),
@@ -55,18 +111,16 @@ std::unique_ptr<ast::Expr> Parser::parse_identifier_expr(std::string && name)
     }
     else
     {
-        auto lhs = std::make_unique<ast::Variable>(std::move(name));
-        return parse_bin_expr_rhs(std::move(lhs));
+        return std::make_unique<ast::Variable>(std::move(name));
     }
 }
 
 std::unique_ptr<ast::Expr> Parser::parse_literal_expr(double value)
 {
-    auto literal = std::make_unique<ast::Literal>(value);
-    return parse_bin_expr_rhs(std::move(literal));
+    return std::make_unique<ast::Literal>(value);
 }
 
-std::unique_ptr<ast::Expr> Parser::parse_expr()
+std::unique_ptr<ast::Expr> Parser::parse_primary_expr()
 {
     if (std::holds_alternative<Left>(lexer.current()))
     {
@@ -94,6 +148,17 @@ std::unique_ptr<ast::Expr> Parser::parse_expr()
     {
         return nullptr;
     }
+    return nullptr;
+}
+
+std::unique_ptr<ast::Expr> Parser::parse_expr()
+{
+    if (auto lhs = parse_primary_expr())
+    {
+        return parse_bin_expr_rhs(0, std::move(lhs));
+    }
+
+    return nullptr;
 }
 
 std::unique_ptr<ast::Node> Parser::parse_def()
@@ -126,7 +191,7 @@ const std::vector<std::unique_ptr<ast::Node>> & Parser::parse()
         }
         else if (std::holds_alternative<Invalid>(lexer.current()))
         {
-           return {};
+            return {};
         }
         else
         {
