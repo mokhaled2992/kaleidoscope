@@ -5,6 +5,8 @@ namespace mk
 {
 class CodeGen
 {
+public:
+    CodeGen();
 };
 }  // namespace mk
 

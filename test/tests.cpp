@@ -4,6 +4,7 @@
 #include "compiler/parser/ast.h"
 #include "compiler/parser/parser.h"
 #include "compiler/parser/visitor.h"
+#include "compiler/codegen/codegen.h"
 
 #include "util/overload.h"
 
@@ -243,4 +244,13 @@ def foo(a,b)
 )CODE";
 
     ASSERT_EQ(expected, ss.str());
+}
+
+TEST(CodeGen, Simple)
+{
+    using namespace mk;
+
+    CodeGen codegen;
+
+    (void) codegen;
 }
