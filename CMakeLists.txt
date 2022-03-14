@@ -36,4 +36,23 @@ set_target_properties(parser
                       PROPERTIES
                       LIBRARY_OUTPUT_DIRECTORY lib)
 
+add_library(codegen
+            SHARED
+            ${kaleidoscope_SOURCE_DIR}/src/compiler/codegen/codegen.cpp)
+
+target_include_directories(codegen
+                           PRIVATE
+                           ${kaleidoscope_SOURCE_DIR}/src/compiler/parser
+                           ${kaleidoscope_SOURCE_DIR}/src
+                           /lib/llvm-13/include)
+
+target_link_libraries(codegen
+                      PRIVATE
+                      parser
+                      LLVM-13)
+
+set_target_properties(codegen
+                      PROPERTIES
+                      LIBRARY_OUTPUT_DIRECTORY lib)
+
 add_subdirectory(test)
