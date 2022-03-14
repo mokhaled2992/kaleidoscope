@@ -10,6 +10,8 @@ add_compile_options(-std=c++20
                     -Wno-maybe-uninitialized
                     -O3)
 
+################ LEXER ################
+
 add_library(lexer
             SHARED
             ${kaleidoscope_SOURCE_DIR}/src/compiler/lexer/lexer.cpp)
@@ -18,6 +20,8 @@ set_target_properties(lexer
                       PROPERTIES
                       LIBRARY_OUTPUT_DIRECTORY lib)
 
+
+################ PARSER ################
 
 add_library(parser
             SHARED
@@ -36,6 +40,10 @@ set_target_properties(parser
                       PROPERTIES
                       LIBRARY_OUTPUT_DIRECTORY lib)
 
+
+
+
+################ CODEGEN ################
 add_library(codegen
             SHARED
             ${kaleidoscope_SOURCE_DIR}/src/compiler/codegen/codegen.cpp)
@@ -46,10 +54,18 @@ target_include_directories(codegen
                            ${kaleidoscope_SOURCE_DIR}/src
                            /lib/llvm-13/include)
 
+target_link_directories(codegen
+                        PRIVATE
+                        /lib/llvm-13/lib/)
+
 target_link_libraries(codegen
                       PRIVATE
                       parser
                       LLVM-13)
+
+target_link_options(codegen
+                    PRIVATE
+                    "-Wl,-rpath=/lib/llvm-13/lib/")
 
 set_target_properties(codegen
                       PROPERTIES
