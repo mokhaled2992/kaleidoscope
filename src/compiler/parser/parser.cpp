@@ -128,6 +128,7 @@ std::unique_ptr<ast::Expr> Parser::parse_primary_expr()
         auto expr = parse_expr();
         if (std::holds_alternative<Right>(lexer.current()))
         {
+            lexer.next();
             return expr;
         }
         return nullptr;
@@ -163,11 +164,52 @@ std::unique_ptr<ast::Expr> Parser::parse_expr()
 
 std::unique_ptr<ast::Node> Parser::parse_def()
 {
+    if (auto signature = parse_proto_type())
+    {
+        return std::make_unique<ast::Function>(std::move(signature),
+                                               parse_expr());
+    }
+
     return nullptr;
 }
 
-std::unique_ptr<ast::Node> Parser::parse_extern()
+std::unique_ptr<ast::ProtoType> Parser::parse_proto_type()
 {
+    std::string name;
+    std::vector<std::string> params;
+    if (const auto p = std::get_if<Identifier>(&lexer.current()))
+    {
+        name = std::move(p->value);
+        lexer.next();
+        if (std::holds_alternative<Left>(lexer.current()))
+        {
+            lexer.next();
+            while (true)
+            {
+                if (std::holds_alternative<Right>(lexer.current()))
+                {
+                    lexer.next();
+                    return std::make_unique<ast::ProtoType>(std::move(name),
+                                                            std::move(params));
+                }
+                else if (const auto p =
+                             std::get_if<Identifier>(&lexer.current()))
+                {
+                    params.push_back(std::move(p->value));
+                    lexer.next();
+                    if (std::holds_alternative<Comma>(lexer.current()))
+                        lexer.next();
+                }
+            }
+        }
+    }
+    return nullptr;
+}
+
+std::unique_ptr<ast::Extern> Parser::parse_extern()
+{
+    if (auto p = parse_proto_type())
+        return std::make_unique<ast::Extern>(std::move(p));
     return nullptr;
 }
 
@@ -181,17 +223,22 @@ const std::vector<std::unique_ptr<ast::Node>> & Parser::parse()
         {
             break;
         }
+        else if (auto p = std::get_if<Invalid>(&lexer.current()))
+        {
+            root.clear();
+            root.emplace_back(
+                std::make_unique<ast::Error>(std::move(p->value)));
+            break;
+        }
         else if (std::holds_alternative<Def>(lexer.current()))
         {
+            lexer.next();
             root.emplace_back(parse_def());
         }
         else if (std::holds_alternative<Extern>(lexer.current()))
         {
+            lexer.next();
             root.emplace_back(parse_extern());
-        }
-        else if (std::holds_alternative<Invalid>(lexer.current()))
-        {
-            return {};
         }
         else
         {

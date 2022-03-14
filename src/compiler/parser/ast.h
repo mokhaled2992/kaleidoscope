@@ -1,6 +1,8 @@
 #ifndef __AST_H__
 #define __AST_H__
 
+#include "visitor.h"
+
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -10,10 +12,14 @@ namespace mk
 {
 namespace ast
 {
+class Visitor;
+
 class Node
 {
 public:
     virtual ~Node() = default;
+    virtual void accept(Visitor & visitor) = 0;
+    virtual void accept_children(Visitor & visitor) = 0;
 };
 
 class Expr : public Node
@@ -25,7 +31,8 @@ class Variable : public Expr
 public:
     Variable(std::string && name) : name(std::move(name)) {}
 
-private:
+    void accept(Visitor & visitor) override { visitor.visit(*this); }
+    void accept_children(Visitor & visitor) override {}
     std::string name;
 };
 
@@ -34,7 +41,9 @@ class Literal : public Expr
 public:
     Literal(double value) : value(value) {}
 
-private:
+    void accept(Visitor & visitor) override { visitor.visit(*this); }
+    void accept_children(Visitor & visitor) override {}
+
     double value;
 };
 
@@ -62,7 +71,15 @@ public:
         : op(std::move(op)), lhs(std::move(lhs)), rhs(std::move(rhs))
     {}
 
-private:
+    void accept(Visitor & visitor) override { visitor.visit(*this); }
+    void accept_children(Visitor & visitor) override
+    {
+        if (lhs)
+            lhs->accept(visitor);
+        if (rhs)
+            rhs->accept(visitor);
+    }
+
     Op op;
     std::unique_ptr<Expr> lhs;
     std::unique_ptr<Expr> rhs;
@@ -75,7 +92,17 @@ public:
         : name(std::move(name)), args(std::move(args))
     {}
 
-private:
+    void accept(Visitor & visitor) override { visitor.visit(*this); }
+    void accept_children(Visitor & visitor) override
+    {
+
+        for (auto & arg : args)
+        {
+            if (arg)
+                arg->accept(visitor);
+        }
+    }
+
     std::string name;
     std::vector<std::unique_ptr<Expr>> args;
 };
@@ -89,21 +116,61 @@ public:
 
     ProtoType(ProtoType &&) = default;
 
-private:
+    void accept(Visitor & visitor) override { visitor.visit(*this); }
+    void accept_children(Visitor & visitor) override {}
+
     std::string name;
     std::vector<std::string> args;
 };
 
-class Function : public ProtoType
+class Extern : public Node
 {
 public:
-    Function(ProtoType && prototype, std::unique_ptr<Expr> && body)
-        : ProtoType(std::move(prototype)), body(std::move(body))
+    Extern(std::unique_ptr<ProtoType> && prototype)
+        : prototype(std::move(prototype))
     {}
 
-private:
+    void accept(Visitor & visitor) override { visitor.visit(*this); }
+    void accept_children(Visitor & visitor) override
+    {
+        if (prototype)
+            prototype->accept(visitor);
+    }
+    std::unique_ptr<ast::ProtoType> prototype;
+};
+
+
+class Function : public Node
+{
+public:
+    Function(std::unique_ptr<ProtoType> && prototype,
+             std::unique_ptr<Expr> && body)
+        : prototype(std::move(prototype)), body(std::move(body))
+    {}
+
+    void accept(Visitor & visitor) override { visitor.visit(*this); }
+    void accept_children(Visitor & visitor) override
+    {
+        if (prototype)
+            prototype->accept(visitor);
+        if (body)
+            body->accept(visitor);
+    }
+    std::unique_ptr<ProtoType> prototype;
     std::unique_ptr<Expr> body;
 };
+
+class Error : public Node
+{
+public:
+    Error(const std::string & msg) : msg(msg) {}
+
+    void accept(Visitor & visitor) override { visitor.visit(*this); }
+    void accept_children(Visitor & visitor) override {}
+
+    std::string msg;
+};
+
 }  // namespace ast
 }  // namespace mk
 
