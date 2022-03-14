@@ -20,7 +20,8 @@ target_link_libraries(tests
                       PRIVATE
                       gtest_main
                       lexer
-                      parser)
+                      parser
+                      codegen)
 
 include(GoogleTest)
 

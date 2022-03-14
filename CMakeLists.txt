@@ -44,6 +44,7 @@ set_target_properties(parser
 
 
 ################ CODEGEN ################
+
 add_library(codegen
             SHARED
             ${kaleidoscope_SOURCE_DIR}/src/compiler/codegen/codegen.cpp)
