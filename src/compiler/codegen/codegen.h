@@ -49,7 +49,7 @@ private:
     {
         std::string msg;
     };
-
+    // Used to communicate the codegen result between different visited nodes
     std::variant<std::monostate, llvm::Function *, llvm::Value *, Error> result;
 
     const std::vector<std::unique_ptr<ast::Node>> & root;
