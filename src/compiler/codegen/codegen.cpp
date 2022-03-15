@@ -22,7 +22,12 @@ CodeGen::CodeGen(const std::vector<std::unique_ptr<ast::Node>> & root)
     , root(root)
 {}
 
-void CodeGen::operator()() const {}
+void CodeGen::operator()()
+{
+    for (auto & node : root)
+        if (node)
+            node->accept(*this);
+}
 
 void CodeGen::visit(ast::Variable & variable)
 {
@@ -125,12 +130,87 @@ void CodeGen::visit(ast::CallExpr & call_expr)
     builder->CreateCall(callee, std::move(args), "calltmp");
 }
 
-void CodeGen::visit(ast::ProtoType &) {}
+void CodeGen::visit(ast::ProtoType & prototype)
+{
+    auto signature = llvm::FunctionType::get(
+        llvm::Type::getDoubleTy(*context),
+        std::vector<llvm::Type *>(prototype.args.size(),
+                                  llvm::Type::getDoubleTy(*context)),
+        false);
 
-void CodeGen::visit(ast::Function &) {}
+    auto function = llvm::Function::Create(signature,
+                                           llvm::Function::ExternalLinkage,
+                                           prototype.name,
+                                           module.get());
 
-void CodeGen::visit(ast::Extern &) {}
+    size_t i = 0;
+    for (auto & arg : function->args())
+    {
+        arg.setName(prototype.args[i++]);
+    }
 
-void CodeGen::visit(ast::Error &) {}
+    result = function;
+}
+
+void CodeGen::visit(ast::Function & fun)
+{
+    if (fun.prototype)
+    {
+        auto function = module->getFunction(fun.prototype->name);
+        if (!function)
+            fun.prototype->accept(*this);
+
+        if (!function)
+            goto err_signature;
+
+        if (!function->empty())
+        {
+            result = Error{"function is already defined"};
+            return;
+        }
+
+        auto * bb = llvm::BasicBlock::Create(*context, "entry", function);
+        builder->SetInsertPoint(bb);
+
+        named_values.clear();
+        for (auto & arg : function->args())
+            named_values.emplace(arg.getName(), &arg);
+
+        if (fun.body)
+        {
+            fun.body->accept(*this);
+            auto ret = std::get_if<llvm::Value *>(&result);
+            if (!ret || !*ret)
+            {
+                function->eraseFromParent();
+                goto err_body;
+            }
+            builder->CreateRet(*ret);
+            llvm::verifyFunction(*function);
+        }
+        else
+        {
+        err_body:
+            result = Error{"bad function body"};
+            return;
+        }
+    }
+    else
+    {
+    err_signature:
+        result = Error{"bad function signature"};
+    }
+}
+
+void CodeGen::visit(ast::Extern & e)
+{
+    if (e.prototype)
+        e.prototype->accept(*this);
+}
+
+void CodeGen::visit(ast::Error & e)
+{
+    result = Error{e.msg};
+}
 
 }  // namespace mk

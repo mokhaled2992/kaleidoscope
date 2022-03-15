@@ -261,4 +261,6 @@ TEST(CodeGen, Simple)
     Parser parser(lexer);
 
     CodeGen codegen(parser.parse());
+
+    codegen();
 }

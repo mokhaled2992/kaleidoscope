@@ -28,7 +28,7 @@ class CodeGen : private ast::Visitor
 public:
     CodeGen(const std::vector<std::unique_ptr<ast::Node>> & root);
 
-    void operator()() const;
+    void operator()();
 
 private:
     void visit(ast::Variable &) override;
