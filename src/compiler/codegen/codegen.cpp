@@ -19,6 +19,7 @@ namespace mk
 CodeGen::CodeGen(const std::vector<std::unique_ptr<ast::Node>> & root)
     : context(std::make_unique<llvm::LLVMContext>())
     , builder(std::make_unique<llvm::IRBuilder<>>(*context))
+    , module(std::make_unique<llvm::Module>("my cool jit", *context))
     , root(root)
 {}
 
