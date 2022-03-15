@@ -114,11 +114,9 @@ void CodeGen::visit(ast::CallExpr & call_expr)
         {
             arg->accept(*this);
             auto a = std::get_if<llvm::Value *>(&result);
-            if (a)
-                args.push_back(*a);
-
             if (!a || !*a)
                 goto err;
+            args.push_back(*a);
         }
         else
         {
@@ -128,7 +126,7 @@ void CodeGen::visit(ast::CallExpr & call_expr)
         }
     }
 
-    builder->CreateCall(callee, std::move(args), "calltmp");
+    result = builder->CreateCall(callee, std::move(args), "calltmp");
 }
 
 void CodeGen::visit(ast::ProtoType & prototype)
@@ -159,7 +157,11 @@ void CodeGen::visit(ast::Function & fun)
     {
         auto function = module->getFunction(fun.prototype->name);
         if (!function)
+        {
             fun.prototype->accept(*this);
+            if (auto p = std::get_if<llvm::Function *>(&result))
+                function = *p;
+        }
 
         if (!function)
             goto err_signature;
@@ -188,6 +190,8 @@ void CodeGen::visit(ast::Function & fun)
             }
             builder->CreateRet(*ret);
             llvm::verifyFunction(*function);
+
+            result = function;
         }
         else
         {
