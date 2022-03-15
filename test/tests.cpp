@@ -1,10 +1,10 @@
 #include <gtest/gtest.h>
 
+#include "compiler/codegen/codegen.h"
 #include "compiler/lexer/lexer.h"
 #include "compiler/parser/ast.h"
 #include "compiler/parser/parser.h"
 #include "compiler/parser/visitor.h"
-#include "compiler/codegen/codegen.h"
 
 #include "util/overload.h"
 
@@ -237,7 +237,7 @@ TEST(Parser, Simple)
     }
 
     const std::string expected =
-R"CODE((1+2)
+        R"CODE((1+2)
 extern bar(a,b)
 def foo(a,b)
 ((((1+(2*3))+(2*3))+2)+bar(1,2))
@@ -250,7 +250,15 @@ TEST(CodeGen, Simple)
 {
     using namespace mk;
 
-    CodeGen codegen;
+    const auto code = R"CODE(
+        1+2
+        extern bar(a,b)
+        def foo(a, b)
+            1 + (2*3) + 2 * 3 + 2 + bar(1,2)
+    )CODE";
 
-    (void) codegen;
+    Lexer lexer(code);
+    Parser parser(lexer);
+
+    CodeGen codegen(parser.parse());
 }

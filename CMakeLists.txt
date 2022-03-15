@@ -50,22 +50,21 @@ add_library(codegen
             ${kaleidoscope_SOURCE_DIR}/src/compiler/codegen/codegen.cpp)
 
 target_include_directories(codegen
-                           PRIVATE
-                           ${kaleidoscope_SOURCE_DIR}/src/compiler/parser
+                           PUBLIC
                            ${kaleidoscope_SOURCE_DIR}/src
-                           /lib/llvm-13/include)
+                           /lib/llvm-13/include/)
 
 target_link_directories(codegen
-                        PRIVATE
+                        PUBLIC
                         /lib/llvm-13/lib/)
 
 target_link_libraries(codegen
-                      PRIVATE
+                      PUBLIC
                       parser
                       LLVM-13)
 
 target_link_options(codegen
-                    PRIVATE
+                    PUBLIC
                     "-Wl,-rpath=/lib/llvm-13/lib/")
 
 set_target_properties(codegen
