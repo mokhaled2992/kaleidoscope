@@ -71,4 +71,32 @@ set_target_properties(codegen
                       PROPERTIES
                       LIBRARY_OUTPUT_DIRECTORY lib)
 
+
+################ COMPILER ################
+
+add_library(compiler
+            SHARED
+            ${kaleidoscope_SOURCE_DIR}/src/compiler/compiler/compiler.cpp)
+
+target_include_directories(compiler
+                           PUBLIC
+                           ${kaleidoscope_SOURCE_DIR}/src
+                           /lib/llvm-13/include/)
+
+target_link_directories(compiler
+                        PUBLIC
+                        /lib/llvm-13/lib/)
+
+target_link_libraries(compiler
+                      PUBLIC
+                      LLVM-13)
+
+target_link_options(compiler
+                    PUBLIC
+                    "-Wl,-rpath=/lib/llvm-13/lib/")
+
+set_target_properties(compiler
+                      PROPERTIES
+                      LIBRARY_OUTPUT_DIRECTORY lib)
+
 add_subdirectory(test)

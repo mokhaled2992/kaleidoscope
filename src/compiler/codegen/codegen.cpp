@@ -8,11 +8,16 @@
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Scalar/GVN.h"
 
 #include <string_view>
+
 
 namespace mk
 {
@@ -20,14 +25,29 @@ CodeGen::CodeGen(const std::vector<std::unique_ptr<ast::Node>> & root)
     : context(std::make_unique<llvm::LLVMContext>())
     , builder(std::make_unique<llvm::IRBuilder<>>(*context))
     , module(std::make_unique<llvm::Module>("my cool jit", *context))
+    , fpm(std::make_unique<llvm::legacy::FunctionPassManager>(module.get()))
     , root(root)
-{}
+{
+    // Do simple "peephole" optimizations and bit-twiddling optzns.
+    fpm->add(llvm::createInstructionCombiningPass());
+    // Reassociate expressions.
+    fpm->add(llvm::createReassociatePass());
+    // Eliminate Common SubExpressions.
+    fpm->add(llvm::createGVNPass());
+    // Simplify the control flow graph (deleting unreachable blocks, etc).
+    fpm->add(llvm::createCFGSimplificationPass());
 
-void CodeGen::operator()()
+    fpm->doInitialization();
+}
+
+CodeGen::~CodeGen() = default;
+
+const llvm::Module * CodeGen::operator()()
 {
     for (auto & node : root)
         if (node)
             node->accept(*this);
+    return module.get();
 }
 
 void CodeGen::visit(ast::Variable & variable)
@@ -52,38 +72,55 @@ void CodeGen::visit(ast::Literal & literal)
 
 void CodeGen::visit(ast::BinExpr & bin_expr)
 {
+    llvm::Value *l, *r;
     if (bin_expr.lhs)
+    {
+        result = std::monostate{};
         bin_expr.lhs->accept(*this);
-    auto l = std::get_if<llvm::Value *>(&result);
+
+        if (auto p = std::get_if<llvm::Value *>(&result))
+            l = *p;
+    }
+
     if (bin_expr.rhs)
+    {
+        result = std::monostate{};
         bin_expr.rhs->accept(*this);
-    auto r = std::get_if<llvm::Value *>(&result);
+        if (auto p = std::get_if<llvm::Value *>(&result))
+            r = *p;
+    }
     if (!l || !r)
     {
-        result = Error{"bad binary expression"};
+        result = Error("bad binary expression");
         return;
     }
 
     switch (bin_expr.op)
     {
     case ast::BinExpr::Op::Add:
-        result = builder->CreateFAdd(*l, *r, "addtmp");
+    {
+        result = builder->CreateFAdd(l, r, "addtmp");
         break;
+    }
     case ast::BinExpr::Op::Minus:
-        result = builder->CreateFSub(*l, *r, "subtmp");
+    {
+        result = builder->CreateFSub(l, r, "subtmp");
         break;
+    }
     case ast::BinExpr::Op::Multiply:
-        result = builder->CreateFMul(*l, *r, "multmp");
+    {
+        result = builder->CreateFMul(l, r, "multmp");
         break;
+    }
     case ast::BinExpr::Op::LessThan:
     {
-        const auto boolean = builder->CreateFCmpULT(*l, *r, "cmptmp");
+        const auto boolean = builder->CreateFCmpULT(l, r, "cmptmp");
         // Convert bool 0/1 to double 0.0 or 1.0
         result = builder->CreateUIToFP(boolean,
                                        llvm::Type::getDoubleTy(*context),
                                        "booltmp");
+        break;
     }
-    break;
     default:
         result = Error{"invalid binary operator"};
     }
@@ -112,6 +149,7 @@ void CodeGen::visit(ast::CallExpr & call_expr)
     {
         if (arg)
         {
+            result = std::monostate{};
             arg->accept(*this);
             auto a = std::get_if<llvm::Value *>(&result);
             if (!a || !*a)
@@ -158,6 +196,7 @@ void CodeGen::visit(ast::Function & fun)
         auto function = module->getFunction(fun.prototype->name);
         if (!function)
         {
+            result = std::monostate{};
             fun.prototype->accept(*this);
             if (auto p = std::get_if<llvm::Function *>(&result))
                 function = *p;
@@ -181,6 +220,7 @@ void CodeGen::visit(ast::Function & fun)
 
         if (fun.body)
         {
+            result = std::monostate{};
             fun.body->accept(*this);
             auto ret = std::get_if<llvm::Value *>(&result);
             if (!ret || !*ret)
@@ -190,6 +230,8 @@ void CodeGen::visit(ast::Function & fun)
             }
             builder->CreateRet(*ret);
             llvm::verifyFunction(*function);
+
+            fpm->run(*function);
 
             result = function;
         }

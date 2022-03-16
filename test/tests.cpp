@@ -8,6 +8,10 @@
 
 #include "util/overload.h"
 
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/ToolOutputFile.h"
+#include "llvm/Support/raw_ostream.h"
+
 
 #include <iostream>
 #include <sstream>
@@ -251,10 +255,9 @@ TEST(CodeGen, Simple)
     using namespace mk;
 
     const auto code = R"CODE(
-        1+2
         extern bar(a,b)
         def foo(a, b)
-            1 + (2*3) + 2 * 3 + 2 + bar(1,2)
+            1 + (2*3) + 4 * 5 + 6 + bar(7,8)
     )CODE";
 
     Lexer lexer(code);
@@ -262,5 +265,29 @@ TEST(CodeGen, Simple)
 
     CodeGen codegen(parser.parse());
 
-    codegen();
+    auto module = codegen();
+
+    std::error_code error;
+
+    std::string actual;
+    {
+        llvm::raw_string_ostream ss(actual);
+        module->print(ss, nullptr);
+    }
+
+    const std::string expected =
+        R"CODE(; ModuleID = 'my cool jit'
+source_filename = "my cool jit"
+
+declare double @bar(double, double)
+
+define double @foo(double %a, double %b) {
+entry:
+  %calltmp = call double @bar(double 7.000000e+00, double 8.000000e+00)
+  %addtmp = fadd double %calltmp, 3.300000e+01
+  ret double %addtmp
+}
+)CODE";
+
+    ASSERT_EQ(expected, actual);
 }

@@ -15,6 +15,10 @@ namespace llvm
 {
 class Module;
 class Value;
+namespace legacy
+{
+class FunctionPassManager;
+}
 }  // namespace llvm
 
 namespace mk
@@ -27,8 +31,8 @@ class CodeGen : private ast::Visitor
 {
 public:
     CodeGen(const std::vector<std::unique_ptr<ast::Node>> & root);
-
-    void operator()();
+    ~CodeGen();
+    const llvm::Module * operator()();
 
 private:
     void visit(ast::Variable &) override;
@@ -44,9 +48,11 @@ private:
     std::unique_ptr<llvm::IRBuilder<>> builder;
     std::unique_ptr<llvm::Module> module;
     std::map<std::string, llvm::Value *> named_values;
+    std::unique_ptr<llvm::legacy::FunctionPassManager> fpm;
 
     struct Error
     {
+        Error(const std::string & msg) : msg(msg) { throw 1; }
         std::string msg;
     };
     // Used to communicate the codegen result between different visited nodes
