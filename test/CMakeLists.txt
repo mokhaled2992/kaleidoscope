@@ -21,7 +21,8 @@ target_link_libraries(tests
                       gtest_main
                       lexer
                       parser
-                      codegen)
+                      codegen
+                      driver)
 
 include(GoogleTest)
 

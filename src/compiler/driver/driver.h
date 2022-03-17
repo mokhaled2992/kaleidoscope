@@ -9,6 +9,7 @@
 #include "llvm/IR/DataLayout.h"
 
 #include <memory>
+#include <variant>
 #include <vector>
 
 namespace llvm
@@ -23,17 +24,42 @@ class Driver
 {
 
 public:
+    struct Execute
+    {
+        double result;
+    };
+    struct Link
+    {
+    };
+    struct Library
+    {
+        enum class Type
+        {
+            shared,
+            object
+        };
+    };
+    struct Compile
+    {
+    };
+    struct IR
+    {
+    };
+
+    using Action =
+        std::variant<std::monostate, Execute, Link, Library, Compile, IR>;
+
     Driver();
     ~Driver();
 
-    void operator()(const std::string_view & src);
+    void operator()(const std::string_view & src, Action & action);
 
     // ModuleHandle addModule(std::unique_ptr<Module> M);
     // void removeModule(ModuleHandle K);
     // llvm::JITSymbol findSymbol(const std::string Name);
 
 private:
-    void execute(const llvm::Module & module);
+    void execute(const llvm::Module & module, Execute & execute);
     // std::string mangle(const std::string & Name);
     // llvm::JITSymbol findMangledSymbol(const std::string & Name);
 

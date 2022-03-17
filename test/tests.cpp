@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "compiler/codegen/codegen.h"
+#include "compiler/driver/driver.h"
 #include "compiler/lexer/lexer.h"
 #include "compiler/parser/ast.h"
 #include "compiler/parser/parser.h"
@@ -303,4 +304,21 @@ entry:
 )CODE";
 
     ASSERT_EQ(expected, actual);
+}
+
+TEST(driver, execute)
+{
+    const std::string code = R"CODE(
+        def foo(a, b)
+            1 + (2*3+a) + 4 * 5 + 6 * b
+        def main()
+            foo(9,10)
+    )CODE";
+
+    mk::Driver driver;
+
+    mk::Driver::Action execute(mk::Driver::Execute{});
+    driver(code, execute);
+
+    ASSERT_EQ(std::get<mk::Driver::Execute>(execute).result, 96);
 }

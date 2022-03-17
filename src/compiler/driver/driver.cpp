@@ -48,7 +48,7 @@ Driver::Driver()
 
 Driver::~Driver() = default;
 
-void Driver::operator()(const std::string_view & src)
+void Driver::operator()(const std::string_view & src, Action & action)
 {
 
     Lexer lexer(src);
@@ -90,12 +90,12 @@ void Driver::operator()(const std::string_view & src)
                                     true));
 
     module->setDataLayout(target_machine->createDataLayout());
-
-    execute(*module);
+    if (auto p = std::get_if<Execute>(&action))
+        execute(*module, *p);
 }
 
 
-void Driver::execute(const llvm::Module & module)
+void Driver::execute(const llvm::Module & module, Execute & execute)
 {
     std::string llvm_errors;
     std::unique_ptr<llvm::ExecutionEngine> execution_engine(
@@ -108,6 +108,18 @@ void Driver::execute(const llvm::Module & module)
             .setVerifyModules(true)
             .setOptLevel(llvm::CodeGenOpt::Default)
             .create());
+
+    auto main = execution_engine->getFunctionAddress("main");
+    /// TODO CONVERT THE RESULT TYPE TO VARIANT FOR MORE FLEXIBILITY
+    /// TODO CHECK THE RETURN TYPE OF MAIN AND ADJUST THE RESULT ACCODRINGLY
+    const auto main_func = engine->FindFunctionNamed(main_fun_name.c_str());
+    if (!main)
+    {
+        return;
+    }
+
+    auto result = reinterpret_cast<double (*)()>(main)();
+    execute.result = result;
 }
 // ModuleHandle Compiler::addModule(std::unique_ptr<Module> M)
 // {
