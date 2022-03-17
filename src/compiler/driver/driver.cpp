@@ -1,13 +1,21 @@
-#include "compiler.h"
+#include "driver.h"
+
+#include "compiler/codegen/codegen.h"
+#include "compiler/lexer/lexer.h"
+#include "compiler/parser/parser.h"
 
 // #include "llvm/ADT/STLExtras.h"
 // #include "llvm/ADT/iterator_range.h"
 
-#include "llvm/Support/TargetSelect.h"
-#include "llvm/Target/TargetMachine.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
+#include "llvm/Support/Host.h"
+#include "llvm/Support/TargetRegistry.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetOptions.h"
 #include "llvm/Transforms/Utils/Cloning.h"
+
 // #include "llvm/ExecutionEngine/JITSymbol.h"
 // #include "llvm/ExecutionEngine/Orc/CompileUtils.h"
 // #include "llvm/ExecutionEngine/Orc/IRCompileLayer.h"
@@ -20,8 +28,8 @@
 // #include "llvm/Target/TargetMachine.h"
 
 
-
 #include <algorithm>
+#include <iostream>
 #include <map>
 #include <memory>
 #include <string>
@@ -30,20 +38,64 @@
 namespace mk
 {
 
-Compiler::Compiler()
+Driver::Driver()
 {
-    llvm::InitializeNativeTarget();
-    llvm::InitializeNativeTargetAsmPrinter();
-    llvm::InitializeNativeTargetAsmParser();
+    // llvm::InitializeNativeTarget();
+    // llvm::InitializeNativeTargetAsmPrinter();
+    // llvm::InitializeNativeTargetAsmParser();
     // llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
 }
 
-Compiler::~Compiler() = default;
+Driver::~Driver() = default;
 
-void Compiler::operator()() {}
+void Driver::operator()(const std::string_view & src)
+{
+
+    Lexer lexer(src);
+    Parser parser(lexer);
+    CodeGen codegen(parser.parse());
+
+    std::unique_ptr<llvm::Module> module(llvm::CloneModule(*codegen()));
+
+    llvm::InitializeNativeTarget();
+    llvm::InitializeNativeTargetAsmPrinter();
+    llvm::InitializeNativeTargetAsmParser();
+
+    std::string Error;
+    const auto triple = llvm::sys::getDefaultTargetTriple();
+
+    // Get the target specific parser.
+    const llvm::Target * target =
+        llvm::TargetRegistry::lookupTarget(triple, Error);
+    if (!target)
+    {
+        std::cerr << Error << std::endl;
+        return;
+    }
+
+    llvm::TargetOptions Options;
+    // Options.NoFramePointerElim = true;
+    Options.MCOptions.AsmVerbose = true;
+
+    std::string MCPU = "";  // don't target specific cpu
+    std::string FeaturesStr = "";
+    std::unique_ptr<llvm::TargetMachine> target_machine(
+        target->createTargetMachine(triple,
+                                    MCPU,
+                                    FeaturesStr,
+                                    Options,
+                                    llvm::Reloc::PIC_,
+                                    llvm::CodeModel::Large,
+                                    llvm::CodeGenOpt::Default,
+                                    true));
+
+    module->setDataLayout(target_machine->createDataLayout());
+
+    execute(*module);
+}
 
 
-void Compiler::execute(llvm::Module & module)
+void Driver::execute(const llvm::Module & module)
 {
     std::string llvm_errors;
     std::unique_ptr<llvm::ExecutionEngine> execution_engine(

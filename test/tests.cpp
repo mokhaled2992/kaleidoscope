@@ -257,7 +257,9 @@ TEST(CodeGen, Simple)
     const auto code = R"CODE(
         extern bar(a,b)
         def foo(a, b)
-            1 + (2*3) + 4 * 5 + 6 + bar(7,8)
+            1 + (2*3+a) + 4 * 5 + 6 + bar(7,8) * b
+        def main()
+            foo(9,10)
     )CODE";
 
     Lexer lexer(code);
@@ -283,9 +285,20 @@ declare double @bar(double, double)
 
 define double @foo(double %a, double %b) {
 entry:
+  %addtmp = fadd double %a, 6.000000e+00
+  %addtmp1 = fadd double %addtmp, 1.000000e+00
+  %addtmp2 = fadd double %addtmp1, 2.000000e+01
+  %addtmp3 = fadd double %addtmp2, 6.000000e+00
   %calltmp = call double @bar(double 7.000000e+00, double 8.000000e+00)
-  %addtmp = fadd double %calltmp, 3.300000e+01
-  ret double %addtmp
+  %multmp = fmul double %b, %calltmp
+  %addtmp4 = fadd double %addtmp3, %multmp
+  ret double %addtmp4
+}
+
+define double @main() {
+entry:
+  %calltmp = call double @foo(double 9.000000e+00, double 1.000000e+01)
+  ret double %calltmp
 }
 )CODE";
 

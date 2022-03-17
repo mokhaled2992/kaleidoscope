@@ -1,5 +1,5 @@
-#ifndef __COMPILER_H__
-#define __COMPILER_H__
+#ifndef __DRIVER_H__
+#define __DRIVER_H__
 
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/JITSymbol.h"
@@ -19,21 +19,21 @@ class SymbolResolver;
 
 namespace mk
 {
-class Compiler
+class Driver
 {
 
 public:
-    Compiler();
-    ~Compiler();
+    Driver();
+    ~Driver();
 
-    void operator()();
-    void execute(llvm::Module & module);
+    void operator()(const std::string_view & src);
 
     // ModuleHandle addModule(std::unique_ptr<Module> M);
     // void removeModule(ModuleHandle K);
     // llvm::JITSymbol findSymbol(const std::string Name);
 
 private:
+    void execute(const llvm::Module & module);
     // std::string mangle(const std::string & Name);
     // llvm::JITSymbol findMangledSymbol(const std::string & Name);
 

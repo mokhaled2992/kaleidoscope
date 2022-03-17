@@ -72,30 +72,33 @@ set_target_properties(codegen
                       LIBRARY_OUTPUT_DIRECTORY lib)
 
 
-################ COMPILER ################
+################ DRIVER ################
 
-add_library(compiler
+add_library(driver
             SHARED
-            ${kaleidoscope_SOURCE_DIR}/src/compiler/compiler/compiler.cpp)
+            ${kaleidoscope_SOURCE_DIR}/src/compiler/driver/driver.cpp)
 
-target_include_directories(compiler
+target_include_directories(driver
                            PUBLIC
                            ${kaleidoscope_SOURCE_DIR}/src
                            /lib/llvm-13/include/)
 
-target_link_directories(compiler
+target_link_directories(driver
                         PUBLIC
                         /lib/llvm-13/lib/)
 
-target_link_libraries(compiler
+target_link_libraries(driver
                       PUBLIC
+                      lexer
+                      parser
+                      codegen
                       LLVM-13)
 
-target_link_options(compiler
+target_link_options(driver
                     PUBLIC
                     "-Wl,-rpath=/lib/llvm-13/lib/")
 
-set_target_properties(compiler
+set_target_properties(driver
                       PROPERTIES
                       LIBRARY_OUTPUT_DIRECTORY lib)
 
