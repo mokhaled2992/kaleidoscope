@@ -30,6 +30,7 @@ public:
     };
     struct Link
     {
+        bool error;
     };
     struct Library
     {

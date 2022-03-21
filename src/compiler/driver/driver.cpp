@@ -9,6 +9,7 @@
 
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
+#include "llvm/Linker/Linker.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/TargetSelect.h"
@@ -92,6 +93,12 @@ void Driver::operator()(const std::string_view & src, Action & action)
     module->setDataLayout(target_machine->createDataLayout());
     if (auto p = std::get_if<Execute>(&action))
         execute(*module, *p);
+    else if (auto p = std::get_if<Link>(&action))
+    {
+        p->error = llvm::Linker::linkModules(*module,
+                                             std::unique_ptr<llvm::Module>{
+                                                 llvm::CloneModule(*module)});
+    }
 }
 
 

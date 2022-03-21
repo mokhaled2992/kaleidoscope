@@ -323,3 +323,22 @@ TEST(driver, execute)
                                   [](...) { FAIL(); }),
                std::get<mk::Driver::Execute>(execute).result);
 }
+
+TEST(driver, link)
+{
+    const std::string code = R"CODE(
+        extern bar(a,b)
+        def foo(a, b)
+            1 + (2*3+a) + 4 * 5 + 6 * b
+        def main()
+            foo(9,10)
+    )CODE";
+
+    mk::Driver driver;
+
+    mk::Driver::Action link(mk::Driver::Link{});
+
+    driver(code, link);
+
+    ASSERT_TRUE(std::get<mk::Driver::Link>(link).error);
+}
