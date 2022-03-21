@@ -110,16 +110,30 @@ void Driver::execute(const llvm::Module & module, Execute & execute)
             .create());
 
     auto main = execution_engine->getFunctionAddress("main");
-    /// TODO CONVERT THE RESULT TYPE TO VARIANT FOR MORE FLEXIBILITY
-    /// TODO CHECK THE RETURN TYPE OF MAIN AND ADJUST THE RESULT ACCODRINGLY
-    const auto main_func = engine->FindFunctionNamed(main_fun_name.c_str());
-    if (!main)
+    const auto main_signature = execution_engine->FindFunctionNamed("main");
+    if (!main || !main_signature)
     {
         return;
     }
 
-    auto result = reinterpret_cast<double (*)()>(main)();
-    execute.result = result;
+    const auto return_type = main_signature->getReturnType();
+
+    if (return_type->isIntegerTy(64))
+    {
+        execute.result = reinterpret_cast<int64_t (*)()>(main)();
+    }
+    else if (return_type->isDoubleTy())
+    {
+        execute.result = reinterpret_cast<double (*)()>(main)();
+    }
+    else if (return_type->isPointerTy())
+    {
+        execute.result = reinterpret_cast<void * (*)()>(main)();
+    }
+    else if (return_type->isVoidTy())
+    {
+        reinterpret_cast<void (*)()>(main)();
+    }
 }
 // ModuleHandle Compiler::addModule(std::unique_ptr<Module> M)
 // {

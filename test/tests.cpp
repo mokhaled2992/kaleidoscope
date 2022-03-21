@@ -319,6 +319,7 @@ TEST(driver, execute)
 
     mk::Driver::Action execute(mk::Driver::Execute{});
     driver(code, execute);
-
-    ASSERT_EQ(std::get<mk::Driver::Execute>(execute).result, 96);
+    std::visit(mk::util::Overload([](double x) { ASSERT_EQ(x, 96); },
+                                  [](...) { FAIL(); }),
+               std::get<mk::Driver::Execute>(execute).result);
 }

@@ -26,7 +26,7 @@ class Driver
 public:
     struct Execute
     {
-        double result;
+        std::variant<std::monostate, int64_t, double, char, void *> result;
     };
     struct Link
     {
