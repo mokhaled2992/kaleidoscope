@@ -72,7 +72,7 @@ void CodeGen::visit(ast::Literal & literal)
 
 void CodeGen::visit(ast::BinExpr & bin_expr)
 {
-    llvm::Value *l, *r;
+    llvm::Value *l = nullptr, *r = nullptr;
     if (bin_expr.lhs)
     {
         result = std::monostate{};
