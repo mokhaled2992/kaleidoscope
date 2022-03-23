@@ -10,7 +10,7 @@ Set(FETCHCONTENT_QUIET FALSE)
 FetchContent_Declare(
   llvm-project
   GIT_REPOSITORY https://github.com/llvm/llvm-project.git
-  GIT_TAG main
+  GIT_TAG llvmorg-14.0.0
   GIT_PROGRESS TRUE
   SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/llvm-project/src
   BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/llvm-project/build

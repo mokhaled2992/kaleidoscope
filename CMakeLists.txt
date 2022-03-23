@@ -56,20 +56,20 @@ add_library(codegen
 target_include_directories(codegen
                            PUBLIC
                            ${kaleidoscope_SOURCE_DIR}/src
-                           /usr/lib/llvm-13/include)
+                           ${CMAKE_CURRENT_BINARY_DIR}/toolstack/include)
 
 target_link_directories(codegen
                         PUBLIC
-                        /usr/lib/llvm-13/lib)
+                        ${CMAKE_CURRENT_BINARY_DIR}/toolstack/lib)
 
 target_link_libraries(codegen
                       PUBLIC
                       parser
-                      LLVM-13)
+                      LLVM)
 
 target_link_options(codegen
                     PUBLIC
-                    "-Wl,-rpath=/usr/lib/llvm-13/lib")
+                    "-Wl,-rpath=${CMAKE_CURRENT_BINARY_DIR}/toolstack/lib")
 
 set_target_properties(codegen
                       PROPERTIES
@@ -85,23 +85,23 @@ add_library(driver
 target_include_directories(driver
                            PUBLIC
                            ${kaleidoscope_SOURCE_DIR}/src
-                           /usr/lib/llvm-13/include)
+                           ${CMAKE_CURRENT_BINARY_DIR}/toolstack/include)
 
 target_link_directories(driver
                         PUBLIC
-                        /usr/lib/llvm-13/lib)
+                        ${CMAKE_CURRENT_BINARY_DIR}/toolstack/lib)
 
 target_link_libraries(driver
                       PUBLIC
                       lexer
                       parser
                       codegen
-                      LLVM-13
+                      LLVM
                       )
 
 target_link_options(driver
                     PUBLIC
-                    "-Wl,-rpath=/usr/lib/llvm-13/lib")
+                    "-Wl,-rpath=${CMAKE_CURRENT_BINARY_DIR}/toolstack/lib")
 
 set_target_properties(driver
                       PROPERTIES
