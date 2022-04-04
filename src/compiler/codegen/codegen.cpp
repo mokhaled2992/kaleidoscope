@@ -8,6 +8,7 @@
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
@@ -258,6 +259,69 @@ void CodeGen::visit(ast::Extern & e)
 void CodeGen::visit(ast::Error & e)
 {
     result = Error{e.msg};
+}
+
+void CodeGen::visit(ast::ConditionalExpr & conditional)
+{
+    if (conditional.condition)
+    {
+        result = std::monostate{};
+        conditional.condition->accept(*this);
+        if (auto p = std::get_if<llvm::Value *>(&result))
+        {
+            auto condition_value = builder->CreateFCmpONE(
+                *p,
+                llvm::ConstantFP::get(*context, llvm::APFloat(0.0)),
+                "ifcond");
+            auto function = builder->GetInsertBlock()->getParent();
+
+            auto * first_block =
+                llvm::BasicBlock::Create(*context, "then", function);
+            auto * second_block = llvm::BasicBlock::Create(*context, "else");
+            auto * third_block = llvm::BasicBlock::Create(*context, "ifcont");
+
+            builder->CreateCondBr(condition_value, first_block, second_block);
+
+            if (conditional.first)
+            {
+                builder->SetInsertPoint(first_block);
+                result = std::monostate{};
+                conditional.first->accept(*this);
+                if (auto p = std::get_if<llvm::Value *>(&result))
+                {
+                    auto first_value = *p;
+                    builder->CreateBr(third_block);
+                    first_block = builder->GetInsertBlock();
+
+                    if (conditional.second)
+                    {
+                        function->getBasicBlockList().push_back(second_block);
+                        builder->SetInsertPoint(second_block);
+                        result = std::monostate{};
+                        conditional.second->accept(*this);
+                        if (auto p = std::get_if<llvm::Value *>(&result))
+                        {
+                            auto second_value = *p;
+                            builder->CreateBr(third_block);
+                            second_block = builder->GetInsertBlock();
+
+                            function->getBasicBlockList().push_back(
+                                third_block);
+                            builder->SetInsertPoint(third_block);
+
+                            auto * phi_node = builder->CreatePHI(
+                                llvm::Type::getDoubleTy(*context), 2, "iftmp");
+                            phi_node->addIncoming(first_value, first_block);
+                            phi_node->addIncoming(second_value, second_block);
+                            result = phi_node;
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    result = std::monostate{};
 }
 
 }  // namespace mk

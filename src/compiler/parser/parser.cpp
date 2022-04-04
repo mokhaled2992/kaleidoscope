@@ -145,6 +145,35 @@ std::unique_ptr<ast::Expr> Parser::parse_primary_expr()
         lexer.next();
         return parse_identifier_expr(std::move(name));
     }
+    else if (std::holds_alternative<If>(lexer.current()))
+    {
+        lexer.next();
+        if (std::holds_alternative<Left>(lexer.current()))
+        {
+            lexer.next();
+            auto condition = parse_expr();
+            if (std::holds_alternative<Right>(lexer.current()))
+            {
+                lexer.next();
+                if (std::holds_alternative<Then>(lexer.current()))
+                {
+                    lexer.next();
+                    auto first = parse_expr();
+                    if (std::holds_alternative<Else>(lexer.current()))
+                    {
+                        lexer.next();
+                        auto second = parse_expr();
+
+                        return std::make_unique<ast::ConditionalExpr>(
+                            std::move(condition),
+                            std::move(first),
+                            std::move(second));
+                    }
+                }
+            }
+        }
+        return nullptr;
+    }
     else if (std::holds_alternative<Invalid>(lexer.current()))
     {
         return nullptr;

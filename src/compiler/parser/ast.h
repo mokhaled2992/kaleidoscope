@@ -50,7 +50,7 @@ public:
 class BinExpr : public Expr
 {
 public:
-    enum class Op
+    enum class Op : std::uint8_t
     {
         Add,
         Multiply,
@@ -83,6 +83,34 @@ public:
     Op op;
     std::unique_ptr<Expr> lhs;
     std::unique_ptr<Expr> rhs;
+};
+
+class ConditionalExpr : public Expr
+{
+public:
+    ConditionalExpr(std::unique_ptr<Expr> && condition,
+                    std::unique_ptr<Expr> && first,
+                    std::unique_ptr<Expr> && second)
+        : condition(std::move(condition))
+        , first(std::move(first))
+        , second(std::move(second))
+    {}
+
+    void accept(Visitor & visitor) override { visitor.visit(*this); }
+
+    void accept_children(Visitor & visitor) override
+    {
+        if (condition)
+            condition->accept(visitor);
+        if (first)
+            first->accept(visitor);
+        if (second)
+            second->accept(visitor);
+    }
+
+    std::unique_ptr<Expr> condition;
+    std::unique_ptr<Expr> first;
+    std::unique_ptr<Expr> second;
 };
 
 class CallExpr : public Expr

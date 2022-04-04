@@ -135,6 +135,24 @@ struct Comma : TokenBase
     static constexpr unsigned char value = ',';
 };
 
+struct If : TokenBase
+{
+    bool operator==(const If &) const { return true; }
+    constexpr static const char * const value = "if";
+};
+
+struct Then : TokenBase
+{
+    bool operator==(const Then &) const { return true; }
+    constexpr static const char * const value = "then";
+};
+
+struct Else : TokenBase
+{
+    bool operator==(const Else &) const { return true; }
+    constexpr static const char * const value = "else";
+};
+
 using Token = std::variant<Empty,
                            Def,
                            Extern,
@@ -148,6 +166,9 @@ using Token = std::variant<Empty,
                            Right,
                            SemiColon,
                            Comma,
+                           If,
+                           Then,
+                           Else,
                            Invalid>;
 }  // namespace mk
 

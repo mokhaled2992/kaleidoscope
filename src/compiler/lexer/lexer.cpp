@@ -48,6 +48,18 @@ void Lexer::next()
             {
                 token = Extern();
             }
+            else if (value == If::value)
+            {
+                token = If();
+            }
+            else if (value == Then::value)
+            {
+                token = Then();
+            }
+            else if (value == Else::value)
+            {
+                token = Else();
+            }
             else
             {
                 token = Identifier(std::move(value));

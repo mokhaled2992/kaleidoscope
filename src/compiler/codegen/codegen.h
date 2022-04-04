@@ -39,6 +39,7 @@ private:
     void visit(ast::Literal &) override;
     void visit(ast::BinExpr &) override;
     void visit(ast::CallExpr &) override;
+    void visit(ast::ConditionalExpr &) override;
     void visit(ast::ProtoType &) override;
     void visit(ast::Function &) override;
     void visit(ast::Extern &) override;
