@@ -277,6 +277,21 @@ private:
         conditional.second->accept(*this);
     }
 
+    void visit(mk::ast::ForExpr & f) override
+    {
+        ss << "for " << f.name << "=";
+        f.init->accept(*this);
+        ss << ", ";
+        f.condition->accept(*this);
+        if (f.step)
+        {
+            ss << ", ";
+            f.step->accept(*this);
+        }
+        ss << " in" << std::endl;
+        f.body->accept(*this);
+    }
+
 public:
     TestVisitor(std::stringstream & ss) : ss(ss) {}
 };
@@ -290,7 +305,7 @@ TEST(Parser, Simple)
         1+2
         extern bar(a,b)
         def foo(a, b)
-            1 + (2*3) + 2 * 3 + 2 + bar(1,2) + if(a * b) then bar(1,3) else foo(4,5) + 1 * 3
+            1 + (2*3) + 2 * 3 + 2 + bar(1,2) + for i=1, i<10, 2 in if(a * b) then bar(1,3) else foo(4,5) + 1 * 3
     )CODE";
 
     std::stringstream ss;
@@ -313,7 +328,8 @@ TEST(Parser, Simple)
         R"CODE((1+2)
 extern bar(a,b)
 def foo(a,b)
-(((((1+(2*3))+(2*3))+2)+bar(1,2))+if((a*b))
+(((((1+(2*3))+(2*3))+2)+bar(1,2))+for i=1, (i<10), 2 in
+if((a*b))
 then
 bar(1,3)
 else

@@ -174,6 +174,45 @@ std::unique_ptr<ast::Expr> Parser::parse_primary_expr()
         }
         return nullptr;
     }
+    else if (std::holds_alternative<For>(lexer.current()))
+    {
+        lexer.next();
+        if (const auto p = std::get_if<Identifier>(&lexer.current()))
+        {
+            auto name = p->value;
+            lexer.next();
+            if (std::holds_alternative<Assignment>(lexer.current()))
+            {
+                lexer.next();
+                auto init = parse_expr();
+                if (std::holds_alternative<Comma>(lexer.current()))
+                {
+                    lexer.next();
+                    auto condition = parse_expr();
+
+                    std::unique_ptr<ast::Expr> step;
+                    if (std::holds_alternative<Comma>(lexer.current()))
+                    {
+                        lexer.next();
+                        step = parse_expr();
+                    }
+
+                    if (std::holds_alternative<In>(lexer.current()))
+                    {
+                        lexer.next();
+                        auto body = parse_expr();
+                        return std::make_unique<ast::ForExpr>(std::move(name),
+                                                              std::move(init),
+                                                              std::move(
+                                                                  condition),
+                                                              std::move(step),
+                                                              std::move(body));
+                    }
+                }
+            }
+        }
+        return nullptr;
+    }
     else if (std::holds_alternative<Invalid>(lexer.current()))
     {
         return nullptr;

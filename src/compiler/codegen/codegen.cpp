@@ -324,4 +324,9 @@ void CodeGen::visit(ast::ConditionalExpr & conditional)
     result = std::monostate{};
 }
 
+void CodeGen::visit(ast::ForExpr &)
+{
+    result = std::monostate{};
+}
+
 }  // namespace mk

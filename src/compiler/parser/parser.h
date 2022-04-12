@@ -39,7 +39,8 @@ private:
     std::unique_ptr<ast::Expr> parse_literal_expr(double value);
     // identifier-expr := identifier | call-expr
     std::unique_ptr<ast::Expr> parse_identifier_expr(std::string && name);
-    // primary-expr := (expr) | literal-expr | identifier-expr
+    // primary-expr := (expr) | literal-expr | identifier-expr | conditionl-expr
+    // | for-expr
     std::unique_ptr<ast::Expr> parse_primary_expr();
     // call-expr := identifier() | identifier(expr ,expr*)
     std::unique_ptr<ast::Expr> parse_call_expr(std::string && name);

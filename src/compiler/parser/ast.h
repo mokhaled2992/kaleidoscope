@@ -113,6 +113,42 @@ public:
     std::unique_ptr<Expr> second;
 };
 
+class ForExpr : public Expr
+{
+public:
+    ForExpr(std::string && name,
+            std::unique_ptr<Expr> && init,
+            std::unique_ptr<Expr> && condition,
+            std::unique_ptr<Expr> && step,
+            std::unique_ptr<Expr> && body)
+        : name(std::move(name))
+        , init(std::move(init))
+        , condition(std::move(condition))
+        , step(std::move(step))
+        , body(std::move(body))
+    {}
+
+    void accept(Visitor & visitor) override { visitor.visit(*this); }
+
+    void accept_children(Visitor & visitor) override
+    {
+        if (init)
+            init->accept(visitor);
+        if (condition)
+            condition->accept(visitor);
+        if (step)
+            step->accept(visitor);
+        if (body)
+            body->accept(visitor);
+    }
+
+    std::string name;
+    std::unique_ptr<Expr> init;
+    std::unique_ptr<Expr> condition;
+    std::unique_ptr<Expr> step;
+    std::unique_ptr<Expr> body;
+};
+
 class CallExpr : public Expr
 {
 public:
