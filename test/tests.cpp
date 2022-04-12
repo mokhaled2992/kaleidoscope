@@ -346,7 +346,7 @@ TEST(CodeGen, Simple)
     const auto code = R"CODE(
         extern bar(a,b)
         def foo(a, b)
-            1 + (2*3+a) + 4 * 5 + 6 + bar(7,8) * b + if(bar(a,b) < b) then a*b else a + b * bar(13,14)
+            1 + (2*3+a) + 4 * 5 + 6 + bar(7,8) * b + (if(bar(a,b) < b) then a*b else a + b * bar(13,14)) + for i=0,i<10,2 in bar(a,b)
         def main()
             foo(9,10)
     )CODE";
@@ -391,6 +391,16 @@ else:                                             ; preds = %entry
 
 ifcont:                                           ; preds = %else, %then
   %iftmp = phi double [ %multmp6, %then ], [ %addtmp9, %else ]
+  br label %loop
+
+loop:                                             ; preds = %loop, %ifcont
+  %i = phi double [ 0.000000e+00, %ifcont ], [ %next, %loop ]
+  %calltmp11 = call double @bar(double %a, double %b)
+  %next = fadd double %i, 2.000000e+00
+  %cmptmp12 = fcmp ult double %i, 1.000000e+01
+  br i1 %cmptmp12, label %loop, label %after
+
+after:                                            ; preds = %loop
   %addtmp = fadd double %a, 6.000000e+00
   %addtmp1 = fadd double %addtmp, 1.000000e+00
   %addtmp2 = fadd double %addtmp1, 2.000000e+01
@@ -398,7 +408,8 @@ ifcont:                                           ; preds = %else, %then
   %multmp = fmul double %b, %calltmp
   %addtmp4 = fadd double %addtmp3, %multmp
   %addtmp10 = fadd double %addtmp4, %iftmp
-  ret double %addtmp10
+  %addtmp14 = fadd double %addtmp10, 0.000000e+00
+  ret double %addtmp14
 }
 
 define double @main() {

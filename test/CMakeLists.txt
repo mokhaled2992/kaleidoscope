@@ -24,6 +24,10 @@ target_link_libraries(tests
                       codegen
                       driver)
 
+target_link_options(tests
+                    PUBLIC
+                    "-rdynamic")
+
 include(GoogleTest)
 
 gtest_discover_tests(tests)

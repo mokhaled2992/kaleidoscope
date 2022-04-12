@@ -324,9 +324,87 @@ void CodeGen::visit(ast::ConditionalExpr & conditional)
     result = std::monostate{};
 }
 
-void CodeGen::visit(ast::ForExpr &)
+void CodeGen::visit(ast::ForExpr & f)
 {
     result = std::monostate{};
+    f.init->accept(*this);
+    if (auto p = std::get_if<llvm::Value *>(&result))
+    {
+        auto init = *p;
+
+        auto function = builder->GetInsertBlock()->getParent();
+        auto loop = llvm::BasicBlock::Create(*context, "loop", function);
+        builder->CreateBr(loop);
+
+        auto before = builder->GetInsertBlock();
+
+        builder->SetInsertPoint(loop);
+
+        auto phi_node =
+            builder->CreatePHI(llvm::Type::getDoubleTy(*context), 2, f.name);
+
+        phi_node->addIncoming(init, before);
+
+        llvm::Value * old = nullptr;
+        if (auto it = named_values.find(f.name); it != named_values.cend())
+        {
+            old = it->second;
+            it->second = phi_node;
+        }
+        else
+        {
+            named_values.emplace(f.name, phi_node);
+        }
+
+
+        result = std::monostate{};
+        f.body->accept(*this);
+
+
+        llvm::Value * next = nullptr;
+        if (f.step)
+        {
+            result = std::monostate{};
+            f.step->accept(*this);
+            if (const auto p = std::get_if<llvm::Value *>(&result))
+            {
+                next = builder->CreateFAdd(phi_node, *p, "next");
+            }
+        }
+        else
+        {
+            next =
+                builder->CreateFAdd(phi_node,
+                                    llvm::ConstantFP::get(*context,
+                                                          llvm::APFloat(1.0)),
+                                    "next");
+        }
+
+        result = std::monostate{};
+        f.condition->accept(*this);
+        if (const auto p = std::get_if<llvm::Value *>(&result))
+        {
+            auto condition = builder->CreateFCmpONE(
+                *p,
+                llvm::ConstantFP::get(*context, llvm::APFloat(0.0)),
+                "condition");
+
+            auto loop_end = builder->GetInsertBlock();
+            phi_node->addIncoming(next, loop_end);
+
+            auto after = llvm::BasicBlock::Create(*context, "after", function);
+            builder->CreateCondBr(condition, loop, after);
+
+            builder->SetInsertPoint(after);
+            if (old)
+                named_values[f.name] = old;
+            else
+                named_values.erase(f.name);
+        }
+
+        result =
+            llvm::Constant::getNullValue(llvm::Type::getDoubleTy(*context));
+    }
 }
 
 }  // namespace mk
