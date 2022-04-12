@@ -27,7 +27,7 @@ TEST(Lexer, Simple)
         1+1
         extern sin(arg);
         def foo()
-            sin(1*1.22 < 2 * (1 + 42)) + if(1+2) then 3 else 3.14
+            sin(1*1.22 < 2 * (1 + 42)) + if(1+2) then 3 else 3.14 + for i=1, i<10, 1.0 in sin(1)
 
     )CODE";
 
@@ -72,6 +72,22 @@ TEST(Lexer, Simple)
         {Double{3}},
         {Else{}},
         {Double{3.14}},
+        {Add{}},
+        {For{}},
+        {Identifier{"i"}},
+        {Assignment{}},
+        {Double{1}},
+        {Comma{}},
+        {Identifier{"i"}},
+        {LessThan{}},
+        {Double{10}},
+        {Comma{}},
+        {Double{1.0}},
+        {In{}},
+        {Identifier{"sin"}},
+        {Left{}},
+        {Double{1}},
+        {Right{}},
     };
 
     std::vector<Token> actual;
@@ -138,6 +154,18 @@ TEST(Lexer, Simple)
                                              return false;
                                          },
                                          [&actual](const Else & t) {
+                                             actual.emplace_back(t);
+                                             return false;
+                                         },
+                                         [&actual](const For & t) {
+                                             actual.emplace_back(t);
+                                             return false;
+                                         },
+                                         [&actual](const In & t) {
+                                             actual.emplace_back(t);
+                                             return false;
+                                         },
+                                         [&actual](const Assignment & t) {
                                              actual.emplace_back(t);
                                              return false;
                                          });

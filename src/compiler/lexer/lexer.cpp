@@ -60,6 +60,14 @@ void Lexer::next()
             {
                 token = Else();
             }
+            else if (value == For::value)
+            {
+                token = For();
+            }
+            else if (value == In::value)
+            {
+                token = In();
+            }
             else
             {
                 token = Identifier(std::move(value));
@@ -128,6 +136,10 @@ void Lexer::next()
         else if (c == Comma::value)
         {
             token = Comma();
+        }
+        else if(c == Assignment::value)
+        {
+            token = Assignment();
         }
         else
         {

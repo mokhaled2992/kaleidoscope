@@ -153,6 +153,24 @@ struct Else : TokenBase
     constexpr static const char * const value = "else";
 };
 
+struct For : TokenBase
+{
+    bool operator==(const For &) const { return true; }
+    constexpr static const char * const value = "for";
+};
+
+struct In : TokenBase
+{
+    bool operator==(const In &) const { return true; }
+    constexpr static const char * const value = "in";
+};
+
+struct Assignment : TokenBase
+{
+    bool operator==(const Assignment &) const { return true; }
+    constexpr static const unsigned char value = '=';
+};
+
 using Token = std::variant<Empty,
                            Def,
                            Extern,
@@ -169,6 +187,9 @@ using Token = std::variant<Empty,
                            If,
                            Then,
                            Else,
+                           For,
+                           In,
+                           Assignment,
                            Invalid>;
 }  // namespace mk
 
