@@ -5,6 +5,8 @@
 
 #include <memory>
 #include <optional>
+#include <shared_mutex>
+#include <unordered_map>
 #include <vector>
 
 namespace mk
@@ -47,13 +49,27 @@ private:
     std::unique_ptr<ast::Expr>
     parse_bin_expr_rhs(std::int64_t previous,
                        std::unique_ptr<ast::Expr> && lhs);
-    std::optional<ast::BinExpr::Op> parse_bin_op();
-    std::optional<std::int64_t>
-    get_precedence(const std::optional<ast::BinExpr::Op> & op);
+    std::optional<std::string> parse_bin_op();
 
 
     std::vector<std::unique_ptr<ast::Node>> root;
     Lexer & lexer;
+
+
+    struct Precedence
+    {
+    public:
+        Precedence(std::unordered_map<std::string, std::int64_t> && init)
+            : map(std::move(init))
+        {}
+        void push(std::string && op, std::int64_t value);
+        std::optional<std::int64_t>
+        get(const std::optional<std::string> & op) const;
+
+    private:
+        std::unordered_map<std::string, std::int64_t> map;
+        mutable std::shared_mutex mutex;
+    } precedence;
 };
 }  // namespace mk
 

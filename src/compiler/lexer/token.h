@@ -37,57 +37,6 @@ struct Literal : TokenBase
 {
 };
 
-struct Double : Literal
-{
-    Double(double value) : value(value) {}
-    bool operator==(const Double & other) const { return value == other.value; }
-    double value;
-};
-
-struct Operator : TokenBase
-{
-};
-
-struct Add : Operator
-{
-    bool operator==(const Add & other) const { return true; }
-    static constexpr unsigned char value = '+';
-};
-
-struct Minus : Operator
-{
-    bool operator==(const Minus & other) const { return true; }
-    static constexpr unsigned char value = '-';
-};
-
-struct Multiply : Operator
-{
-    bool operator==(const Multiply & other) const { return true; }
-    static constexpr unsigned char value = '*';
-};
-
-struct LessThan : Operator
-{
-    bool operator==(const LessThan & other) const { return true; }
-    static constexpr unsigned char value = '<';
-};
-
-struct Parenthesis : TokenBase
-{
-};
-
-struct Left : Parenthesis
-{
-    bool operator==(const Left & other) const { return true; }
-    static constexpr unsigned char value = '(';
-};
-
-struct Right : Parenthesis
-{
-    bool operator==(const Right & other) const { return true; }
-    static constexpr unsigned char value = ')';
-};
-
 struct Invalid : TokenBase
 {
     Invalid(std::string && value) : value(std::move(value)) {}
@@ -98,41 +47,9 @@ struct Invalid : TokenBase
     std::string value;
 };
 
-struct Comment : TokenBase
-{
-    static constexpr unsigned char value = '#';
-};
-
-struct CarriageReturn : TokenBase
-{
-    static constexpr unsigned char value = '\r';
-};
-
-struct FloatingPoint : TokenBase
-{
-    static constexpr unsigned char value = '.';
-};
-
-struct NewLine : TokenBase
-{
-    static constexpr unsigned char value = '\n';
-};
-
 struct Empty : TokenBase
 {
     bool operator==(const Empty &) const { return true; }
-};
-
-struct SemiColon : TokenBase
-{
-    bool operator==(const SemiColon &) const { return true; }
-    static constexpr unsigned char value = ';';
-};
-
-struct Comma : TokenBase
-{
-    bool operator==(const Comma &) const { return true; }
-    static constexpr unsigned char value = ',';
 };
 
 struct If : TokenBase
@@ -165,32 +82,47 @@ struct In : TokenBase
     constexpr static const char * const value = "in";
 };
 
-struct Assignment : TokenBase
+struct Operator : TokenBase
 {
-    bool operator==(const Assignment &) const { return true; }
-    constexpr static const unsigned char value = '=';
+    bool operator==(const Operator & other) const
+    {
+        return value == other.value;
+    }
+    Operator(std::string && value) : value(std::move(value)) {}
+    std::string value;
 };
 
-using Token = std::variant<Empty,
-                           Def,
-                           Extern,
-                           Identifier,
-                           Double,
-                           Add,
-                           Minus,
-                           Multiply,
-                           LessThan,
-                           Left,
-                           Right,
-                           SemiColon,
-                           Comma,
-                           If,
-                           Then,
-                           Else,
-                           For,
-                           In,
-                           Assignment,
-                           Invalid>;
+using TokenType = std::variant<Empty,
+                               Def,
+                               Extern,
+                               Identifier,
+                               If,
+                               Then,
+                               Else,
+                               For,
+                               In,
+                               Operator,
+                               double,
+                               unsigned char,
+                               Invalid>;
+struct Token : TokenType
+{
+    using TokenType::variant;
+    using TokenType::operator=;
+
+    bool is(unsigned char c) const
+    {
+        const auto p =
+            std::get_if<unsigned char>(static_cast<const TokenType *>(this));
+        return p && *p == c;
+    }
+
+    template <typename T>
+    bool is() const
+    {
+        return std::holds_alternative<T>(static_cast<const TokenType &>(*this));
+    }
+};
 }  // namespace mk
 
 #endif

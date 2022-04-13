@@ -96,24 +96,24 @@ void CodeGen::visit(ast::BinExpr & bin_expr)
         return;
     }
 
-    switch (bin_expr.op)
+    switch (bin_expr.op.front())
     {
-    case ast::BinExpr::Op::Add:
+    case '+':
     {
         result = builder->CreateFAdd(l, r, "addtmp");
         break;
     }
-    case ast::BinExpr::Op::Minus:
+    case '-':
     {
         result = builder->CreateFSub(l, r, "subtmp");
         break;
     }
-    case ast::BinExpr::Op::Multiply:
+    case '*':
     {
         result = builder->CreateFMul(l, r, "multmp");
         break;
     }
-    case ast::BinExpr::Op::LessThan:
+    case '<':
     {
         const auto boolean = builder->CreateFCmpULT(l, r, "cmptmp");
         // Convert bool 0/1 to double 0.0 or 1.0

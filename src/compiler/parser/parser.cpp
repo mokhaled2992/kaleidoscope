@@ -9,42 +9,48 @@
 
 namespace mk
 {
-Parser::Parser(Lexer & lexer) : lexer(lexer) {}
 
+Parser::Parser(Lexer & lexer)
+    : lexer(lexer)
+    , precedence({
+          {"<", 10},
+          {"+", 20},
+          {"-", 20},
+          {"*", 40},
+      })
+{}
 
-std::optional<ast::BinExpr::Op> Parser::parse_bin_op()
+void Parser::Precedence::push(std::string && op, std::int64_t value)
 {
-    std::optional<ast::BinExpr::Op> op;
-    if (std::holds_alternative<Add>(lexer.current()))
-    {
-        op = ast::BinExpr::Op::Add;
-    }
-    else if (std::holds_alternative<Minus>(lexer.current()))
-    {
-        op = ast::BinExpr::Op::Minus;
-    }
-    else if (std::holds_alternative<Multiply>(lexer.current()))
-    {
-        op = ast::BinExpr::Op::Multiply;
-    }
-    else if (std::holds_alternative<LessThan>(lexer.current()))
-    {
-        op = ast::BinExpr::Op::LessThan;
-    }
-
-    return op;
+    std::lock_guard lock(mutex);
+    map.emplace(std::move(op), value);
 }
 
 std::optional<std::int64_t>
-Parser::get_precedence(const std::optional<ast::BinExpr::Op> & op)
+Parser::Precedence::get(const std::optional<std::string> & op) const
 {
     if (!op)
-        return {};
+        return std::nullopt;
 
-    auto it = ast::BinExpr::precedence.find(*op);
-    if (it == ast::BinExpr::precedence.cend())
-        return {};
-    return it->second;
+    std::shared_lock lock(mutex);
+    if (const auto it = map.find(*op); it != map.cend())
+        return it->second;
+    return std::nullopt;
+}
+
+std::optional<std::string> Parser::parse_bin_op()
+{
+    std::optional<std::string> op;
+    if (const auto p = std::get_if<unsigned char>(&lexer.current()))
+    {
+        op = std::string(1, *p);
+    }
+    else if (const auto p = std::get_if<Identifier>(&lexer.current()))
+    {
+        op = p->value;
+    }
+
+    return op;
 }
 
 std::unique_ptr<ast::Expr>
@@ -55,7 +61,7 @@ Parser::parse_bin_expr_rhs(std::int64_t previous,
     {
         auto current = parse_bin_op();
 
-        if (get_precedence(current) < previous)
+        if (precedence.get(current) < previous)
             return std::move(lhs);
 
         lexer.next();
@@ -64,9 +70,9 @@ Parser::parse_bin_expr_rhs(std::int64_t previous,
 
         auto next = parse_bin_op();
 
-        if (get_precedence(next) > get_precedence(current))
+        if (precedence.get(next) > precedence.get(current))
         {
-            rhs = parse_bin_expr_rhs(*get_precedence(current) + 1,
+            rhs = parse_bin_expr_rhs(*precedence.get(current) + 1,
                                      std::move(rhs));
         }
         lhs = std::make_unique<ast::BinExpr>(std::move(*current),
@@ -80,7 +86,7 @@ std::unique_ptr<ast::Expr> Parser::parse_call_expr(std::string && name)
     std::vector<std::unique_ptr<ast::Expr>> args;
     while (true)
     {
-        if (std::holds_alternative<Right>(lexer.current()))
+        if (lexer.current().is(')'))
         {
             lexer.next();
             return std::make_unique<ast::CallExpr>(std::move(name),
@@ -89,7 +95,7 @@ std::unique_ptr<ast::Expr> Parser::parse_call_expr(std::string && name)
         else if (auto arg = parse_expr())
         {
             args.emplace_back(std::move(arg));
-            if (std::holds_alternative<Comma>(lexer.current()))
+            if (lexer.current().is(','))
             {
                 lexer.next();
             }
@@ -104,7 +110,7 @@ std::unique_ptr<ast::Expr> Parser::parse_call_expr(std::string && name)
 
 std::unique_ptr<ast::Expr> Parser::parse_identifier_expr(std::string && name)
 {
-    if (std::holds_alternative<Left>(lexer.current()))
+    if (lexer.current().is('('))
     {
         lexer.next();
         return parse_call_expr(std::move(name));
@@ -122,20 +128,20 @@ std::unique_ptr<ast::Expr> Parser::parse_literal_expr(double value)
 
 std::unique_ptr<ast::Expr> Parser::parse_primary_expr()
 {
-    if (std::holds_alternative<Left>(lexer.current()))
+    if (lexer.current().is('('))
     {
         lexer.next();
         auto expr = parse_expr();
-        if (std::holds_alternative<Right>(lexer.current()))
+        if (lexer.current().is(')'))
         {
             lexer.next();
             return expr;
         }
         return nullptr;
     }
-    else if (const auto p = std::get_if<Double>(&lexer.current()))
+    else if (const auto p = std::get_if<double>(&lexer.current()))
     {
-        auto value = p->value;
+        auto value = *p;
         lexer.next();
         return parse_literal_expr(std::move(value));
     }
@@ -145,21 +151,21 @@ std::unique_ptr<ast::Expr> Parser::parse_primary_expr()
         lexer.next();
         return parse_identifier_expr(std::move(name));
     }
-    else if (std::holds_alternative<If>(lexer.current()))
+    else if (lexer.current().is<If>())
     {
         lexer.next();
-        if (std::holds_alternative<Left>(lexer.current()))
+        if (lexer.current().is('('))
         {
             lexer.next();
             auto condition = parse_expr();
-            if (std::holds_alternative<Right>(lexer.current()))
+            if (lexer.current().is(')'))
             {
                 lexer.next();
-                if (std::holds_alternative<Then>(lexer.current()))
+                if (lexer.current().is<Then>())
                 {
                     lexer.next();
                     auto first = parse_expr();
-                    if (std::holds_alternative<Else>(lexer.current()))
+                    if (lexer.current().is<Else>())
                     {
                         lexer.next();
                         auto second = parse_expr();
@@ -174,30 +180,30 @@ std::unique_ptr<ast::Expr> Parser::parse_primary_expr()
         }
         return nullptr;
     }
-    else if (std::holds_alternative<For>(lexer.current()))
+    else if (lexer.current().is<For>())
     {
         lexer.next();
         if (const auto p = std::get_if<Identifier>(&lexer.current()))
         {
             auto name = p->value;
             lexer.next();
-            if (std::holds_alternative<Assignment>(lexer.current()))
+            if (lexer.current().is('='))
             {
                 lexer.next();
                 auto init = parse_expr();
-                if (std::holds_alternative<Comma>(lexer.current()))
+                if (lexer.current().is(','))
                 {
                     lexer.next();
                     auto condition = parse_expr();
 
                     std::unique_ptr<ast::Expr> step;
-                    if (std::holds_alternative<Comma>(lexer.current()))
+                    if (lexer.current().is(','))
                     {
                         lexer.next();
                         step = parse_expr();
                     }
 
-                    if (std::holds_alternative<In>(lexer.current()))
+                    if (lexer.current().is<In>())
                     {
                         lexer.next();
                         auto body = parse_expr();
@@ -213,7 +219,7 @@ std::unique_ptr<ast::Expr> Parser::parse_primary_expr()
         }
         return nullptr;
     }
-    else if (std::holds_alternative<Invalid>(lexer.current()))
+    else if (lexer.current().is<Invalid>())
     {
         return nullptr;
     }
@@ -244,33 +250,51 @@ std::unique_ptr<ast::Node> Parser::parse_def()
 std::unique_ptr<ast::ProtoType> Parser::parse_proto_type()
 {
     std::string name;
+    std::optional<std::int64_t> precedence;
     std::vector<std::string> params;
+
+    bool is_operator = false;
     if (const auto p = std::get_if<Identifier>(&lexer.current()))
     {
         name = std::move(p->value);
         lexer.next();
-        if (std::holds_alternative<Left>(lexer.current()))
+    }
+    else if (const auto p = std::get_if<Operator>(&lexer.current()))
+    {
+        is_operator = true;
+        name = std::move(p->value);
+        lexer.next();
+        if (const auto p = std::get_if<double>(&lexer.current()))
         {
+            precedence = std::move(*p);
             lexer.next();
-            while (true)
+        }
+    }
+
+    if (lexer.current().is('('))
+    {
+        lexer.next();
+        while (true)
+        {
+            if (lexer.current().is(')'))
             {
-                if (std::holds_alternative<Right>(lexer.current()))
-                {
+                if (is_operator && params.size() > 1 && !precedence)
+                    return nullptr;
+                lexer.next();
+                return std::make_unique<ast::ProtoType>(std::move(name),
+                                                        std::move(precedence),
+                                                        std::move(params));
+            }
+            else if (const auto p = std::get_if<Identifier>(&lexer.current()))
+            {
+                params.push_back(std::move(p->value));
+                lexer.next();
+                if (lexer.current().is(','))
                     lexer.next();
-                    return std::make_unique<ast::ProtoType>(std::move(name),
-                                                            std::move(params));
-                }
-                else if (const auto p =
-                             std::get_if<Identifier>(&lexer.current()))
-                {
-                    params.push_back(std::move(p->value));
-                    lexer.next();
-                    if (std::holds_alternative<Comma>(lexer.current()))
-                        lexer.next();
-                }
             }
         }
     }
+
     return nullptr;
 }
 
@@ -287,7 +311,7 @@ const std::vector<std::unique_ptr<ast::Node>> & Parser::parse()
 
     while (true)
     {
-        if (std::holds_alternative<Empty>(lexer.current()))
+        if (lexer.current().is<Empty>())
         {
             break;
         }
@@ -298,12 +322,12 @@ const std::vector<std::unique_ptr<ast::Node>> & Parser::parse()
                 std::make_unique<ast::Error>(std::move(p->value)));
             break;
         }
-        else if (std::holds_alternative<Def>(lexer.current()))
+        else if (lexer.current().is<Def>())
         {
             lexer.next();
             root.emplace_back(parse_def());
         }
-        else if (std::holds_alternative<Extern>(lexer.current()))
+        else if (lexer.current().is<Extern>())
         {
             lexer.next();
             root.emplace_back(parse_extern());

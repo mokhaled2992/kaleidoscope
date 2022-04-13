@@ -4,6 +4,8 @@
 #include "visitor.h"
 
 #include <memory>
+#include <optional>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -50,22 +52,7 @@ public:
 class BinExpr : public Expr
 {
 public:
-    enum class Op : std::uint8_t
-    {
-        Add,
-        Multiply,
-        Minus,
-        LessThan
-    };
-
-    inline static const std::unordered_map<Op, std::int64_t> precedence = {
-        {Op::LessThan, 10},
-        {Op::Add, 20},
-        {Op::Minus, 20},
-        {Op::Multiply, 40},
-    };
-
-    BinExpr(Op && op,
+    BinExpr(std::string && op,
             std::unique_ptr<Expr> && lhs,
             std::unique_ptr<Expr> && rhs)
         : op(std::move(op)), lhs(std::move(lhs)), rhs(std::move(rhs))
@@ -80,7 +67,7 @@ public:
             rhs->accept(visitor);
     }
 
-    Op op;
+    std::string op;
     std::unique_ptr<Expr> lhs;
     std::unique_ptr<Expr> rhs;
 };
@@ -174,8 +161,16 @@ public:
 class ProtoType : public Node
 {
 public:
+    ProtoType(std::string && name,
+              std::optional<std::int64_t> && precedence,
+              std::vector<std::string> && args)
+        : name(std::move(name))
+        , precedence(std::move(precedence))
+        , args(std::move(args))
+    {}
+
     ProtoType(std::string && name, std::vector<std::string> && args)
-        : name(std::move(name)), args(std::move(args))
+        : ProtoType(std::move(name), std::nullopt, std::move(args))
     {}
 
     ProtoType(ProtoType &&) = default;
@@ -184,6 +179,7 @@ public:
     void accept_children(Visitor & visitor) override {}
 
     std::string name;
+    std::optional<int64_t> precedence;
     std::vector<std::string> args;
 };
 

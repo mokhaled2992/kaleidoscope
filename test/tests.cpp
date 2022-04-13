@@ -3,6 +3,7 @@
 #include "compiler/codegen/codegen.h"
 #include "compiler/driver/driver.h"
 #include "compiler/lexer/lexer.h"
+#include "compiler/lexer/token.h"
 #include "compiler/parser/ast.h"
 #include "compiler/parser/parser.h"
 #include "compiler/parser/visitor.h"
@@ -28,66 +29,77 @@ TEST(Lexer, Simple)
         extern sin(arg);
         def foo()
             sin(1*1.22 < 2 * (1 + 42)) + if(1+2) then 3 else 3.14 + for i=1, i<10, 1.0 in sin(1)
+        def operator | 10(l,r)
+            1
 
     )CODE";
 
     mk::Lexer lexer(code);
 
     std::vector<Token> expected = {
-        {Double{1}},
-        {Add{}},
-        {Double{1}},
+        {1.0},
+        {static_cast<unsigned char>('+')},
+        {1.0},
         {Extern{}},
         {Identifier{"sin"}},
-        {Left{}},
+        {static_cast<unsigned char>('(')},
         {Identifier{"arg"}},
-        {Right{}},
-        {SemiColon{}},
+        {static_cast<unsigned char>(')')},
+        {static_cast<unsigned char>(';')},
         {Def{}},
         {Identifier{"foo"}},
-        {Left{}},
-        {Right{}},
+        {static_cast<unsigned char>('(')},
+        {static_cast<unsigned char>(')')},
         {Identifier{"sin"}},
-        {Left{}},
-        {Double{1}},
-        {Multiply{}},
-        {Double{1.22}},
-        {LessThan{}},
-        {Double{2}},
-        {Multiply{}},
-        {Left{}},
-        {Double{1}},
-        {Add{}},
-        {Double{42}},
-        {Right{}},
-        {Right{}},
-        {Add{}},
+        {static_cast<unsigned char>('(')},
+        {1.0},
+        {static_cast<unsigned char>('*')},
+        {1.22},
+        {static_cast<unsigned char>('<')},
+        {2.0},
+        {static_cast<unsigned char>('*')},
+        {static_cast<unsigned char>('(')},
+        {1.0},
+        {static_cast<unsigned char>('+')},
+        {42.0},
+        {static_cast<unsigned char>(')')},
+        {static_cast<unsigned char>(')')},
+        {static_cast<unsigned char>('+')},
         {If{}},
-        {Left{}},
-        {Double{1}},
-        {Add{}},
-        {Double{2}},
-        {Right{}},
+        {static_cast<unsigned char>('(')},
+        {1.0},
+        {static_cast<unsigned char>('+')},
+        {2.0},
+        {static_cast<unsigned char>(')')},
         {Then{}},
-        {Double{3}},
+        {3.0},
         {Else{}},
-        {Double{3.14}},
-        {Add{}},
+        {3.14},
+        {static_cast<unsigned char>('+')},
         {For{}},
         {Identifier{"i"}},
-        {Assignment{}},
-        {Double{1}},
-        {Comma{}},
+        {static_cast<unsigned char>('=')},
+        {1.0},
+        {static_cast<unsigned char>(',')},
         {Identifier{"i"}},
-        {LessThan{}},
-        {Double{10}},
-        {Comma{}},
-        {Double{1.0}},
+        {static_cast<unsigned char>('<')},
+        {10.0},
+        {static_cast<unsigned char>(',')},
+        {1.0},
         {In{}},
         {Identifier{"sin"}},
-        {Left{}},
-        {Double{1}},
-        {Right{}},
+        {static_cast<unsigned char>('(')},
+        {1.0},
+        {static_cast<unsigned char>(')')},
+        {Def{}},
+        {Operator{"|"}},
+        {10.0},
+        {static_cast<unsigned char>('(')},
+        {Identifier{"l"}},
+        {static_cast<unsigned char>(',')},
+        {Identifier{"r"}},
+        {static_cast<unsigned char>(')')},
+        {1.0},
     };
 
     std::vector<Token> actual;
@@ -105,39 +117,11 @@ TEST(Lexer, Simple)
                                              actual.emplace_back(t);
                                              return false;
                                          },
-                                         [&actual](const Double & t) {
+                                         [&actual](const double & t) {
                                              actual.emplace_back(t);
                                              return false;
                                          },
-                                         [&actual](const Add & t) {
-                                             actual.emplace_back(t);
-                                             return false;
-                                         },
-                                         [&actual](const Minus & t) {
-                                             actual.emplace_back(t);
-                                             return false;
-                                         },
-                                         [&actual](const Multiply & t) {
-                                             actual.emplace_back(t);
-                                             return false;
-                                         },
-                                         [&actual](const LessThan & t) {
-                                             actual.emplace_back(t);
-                                             return false;
-                                         },
-                                         [&actual](const Left & t) {
-                                             actual.emplace_back(t);
-                                             return false;
-                                         },
-                                         [&actual](const Right & t) {
-                                             actual.emplace_back(t);
-                                             return false;
-                                         },
-                                         [&actual](const SemiColon & t) {
-                                             actual.emplace_back(t);
-                                             return false;
-                                         },
-                                         [&actual](const Comma & t) {
+                                         [&actual](const unsigned char & t) {
                                              actual.emplace_back(t);
                                              return false;
                                          },
@@ -165,7 +149,7 @@ TEST(Lexer, Simple)
                                              actual.emplace_back(t);
                                              return false;
                                          },
-                                         [&actual](const Assignment & t) {
+                                         [&actual](const Operator & t) {
                                              actual.emplace_back(t);
                                              return false;
                                          });
@@ -173,7 +157,8 @@ TEST(Lexer, Simple)
     do
     {
         lexer.next();
-    } while (!std::visit(overload, lexer.current()));
+    } while (
+        !std::visit(overload, static_cast<const TokenType &>(lexer.current())));
 
     ASSERT_EQ(actual, expected);
 }
@@ -188,27 +173,10 @@ private:
 
     void visit(mk::ast::BinExpr & bin_expr) override
     {
-        std::string op;
-        switch (bin_expr.op)
-        {
-        case mk::ast::BinExpr::Op::Add:
-            op = "+";
-            break;
-        case mk::ast::BinExpr::Op::Minus:
-            op = "-";
-            break;
-        case mk::ast::BinExpr::Op::Multiply:
-            op = "*";
-            break;
-        case mk::ast::BinExpr::Op::LessThan:
-            op = "<";
-            break;
-        }
-
         ss << "(";
         if (bin_expr.lhs)
             bin_expr.lhs->accept(*this);
-        ss << op;
+        ss << bin_expr.op;
         if (bin_expr.rhs)
             bin_expr.rhs->accept(*this);
         ss << ")";

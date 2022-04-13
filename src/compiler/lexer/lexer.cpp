@@ -6,7 +6,7 @@
 #include <iostream>
 namespace mk
 {
-Lexer::Lexer(const std::string_view & input) : input(input), token(Empty{}) {}
+Lexer::Lexer(const std::string_view & input) : input(input), token() {}
 
 void Lexer::next()
 {
@@ -19,10 +19,9 @@ void Lexer::next()
         {
             continue;
         }
-        else if (c == Comment::value)
+        else if (c == '#')
         {
-            while (!input.empty() && c != CarriageReturn::value
-                   && c != NewLine::value)
+            while (!input.empty() && c != '\n' && c != '\r')
             {
                 c = input.front();
                 input.remove_prefix(1);
@@ -68,6 +67,18 @@ void Lexer::next()
             {
                 token = In();
             }
+            else if (value == "operator")
+            {
+                while (!input.empty() && std::isspace(c = input.front()))
+                    input.remove_prefix(1);
+                std::string opcode;
+                while (!input.empty() && !std::isspace(c = input.front()))
+                {
+                    opcode += c;
+                    input.remove_prefix(1);
+                }
+                token = Operator(std::move(opcode));
+            }
             else
             {
                 token = Identifier(std::move(value));
@@ -86,7 +97,7 @@ void Lexer::next()
                 input.remove_prefix(1);
             }
 
-            if (c == FloatingPoint::value)
+            if (c == '.')
             {
                 if (floating_point)
                 {
@@ -102,48 +113,12 @@ void Lexer::next()
             }
             else
             {
-                token = Double(std::stod(value));
+                token = std::stod(value);
             }
-        }
-        else if (c == Left::value)
-        {
-            token = Left();
-        }
-        else if (c == Right::value)
-        {
-            token = Right();
-        }
-        else if (c == Add::value)
-        {
-            token = Add();
-        }
-        else if (c == Minus::value)
-        {
-            token = Minus();
-        }
-        else if (c == Multiply::value)
-        {
-            token = Multiply();
-        }
-        else if (c == LessThan::value)
-        {
-            token = LessThan();
-        }
-        else if (c == SemiColon::value)
-        {
-            token = SemiColon();
-        }
-        else if (c == Comma::value)
-        {
-            token = Comma();
-        }
-        else if(c == Assignment::value)
-        {
-            token = Assignment();
         }
         else
         {
-            token = Invalid("Unknown Character");
+            token = c;
         }
         return;
     }
