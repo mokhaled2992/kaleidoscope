@@ -96,35 +96,36 @@ void CodeGen::visit(ast::BinExpr & bin_expr)
         return;
     }
 
-    switch (bin_expr.op.front())
-    {
-    case '+':
-    {
-        result = builder->CreateFAdd(l, r, "addtmp");
-        break;
-    }
-    case '-':
-    {
-        result = builder->CreateFSub(l, r, "subtmp");
-        break;
-    }
-    case '*':
-    {
-        result = builder->CreateFMul(l, r, "multmp");
-        break;
-    }
-    case '<':
-    {
-        const auto boolean = builder->CreateFCmpULT(l, r, "cmptmp");
-        // Convert bool 0/1 to double 0.0 or 1.0
-        result = builder->CreateUIToFP(boolean,
-                                       llvm::Type::getDoubleTy(*context),
-                                       "booltmp");
-        break;
-    }
-    default:
-        result = Error{"invalid binary operator"};
-    }
+    if (bin_expr.op.size() == 1)
+        switch (bin_expr.op.front())
+        {
+        case '+':
+        {
+            result = builder->CreateFAdd(l, r, "addtmp");
+            return;
+        }
+        case '-':
+        {
+            result = builder->CreateFSub(l, r, "subtmp");
+            return;
+        }
+        case '*':
+        {
+            result = builder->CreateFMul(l, r, "multmp");
+            return;
+        }
+        case '<':
+        {
+            const auto boolean = builder->CreateFCmpULT(l, r, "cmptmp");
+            // Convert bool 0/1 to double 0.0 or 1.0
+            result = builder->CreateUIToFP(boolean,
+                                           llvm::Type::getDoubleTy(*context),
+                                           "booltmp");
+            return;
+        }
+        default:
+            break;
+        }
 }
 
 void CodeGen::visit(ast::CallExpr & call_expr)
