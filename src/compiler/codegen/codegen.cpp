@@ -413,9 +413,22 @@ void CodeGen::visit(ast::ForExpr & f)
     }
 }
 
-void CodeGen::visit(ast::UnaryExpr &)
+void CodeGen::visit(ast::UnaryExpr & unary_expr)
 {
-    result = std::monostate{};
+    if (const auto function = module->getFunction(unary_expr.op))
+    {
+        if (unary_expr.operand)
+        {
+            result = std::monostate{};
+            unary_expr.operand->accept(*this);
+            if (const auto p = std::get_if<llvm::Value *>(&result))
+            {
+                using Arg = llvm::Value *;
+                Arg args[1] = {*p};
+                result = builder->CreateCall(function, args, unary_expr.op);
+            }
+        }
+    }
 }
 
 }  // namespace mk

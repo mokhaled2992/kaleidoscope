@@ -352,8 +352,9 @@ TEST(CodeGen, Simple)
     const auto code = R"CODE(
         extern bar(a,b)
         extern operator&100(l,r)
+        extern operator!(l)
         def foo(a, b)
-            1 + (2*3+a) + 4 * 5 + 6 + bar(7,8) * b & a + (if(bar(a,b) < b) then a*b else a + b * bar(13,14)) + for i=0,i<10,2 in bar(a,b)
+            1 + (2*3+a) + 4 * 5 + 6 + bar(7,8) * b & a + (if(!bar(a,b) < b) then a*b else a + b * bar(13,14)) + for i=0,i<10,2 in bar(a,b)
         def main()
             foo(9,10)
     )CODE";
@@ -381,12 +382,15 @@ declare double @bar(double, double)
 
 declare double @"&"(double, double)
 
+declare double @"!"(double)
+
 define double @foo(double %a, double %b) {
 entry:
   %calltmp = call double @bar(double 7.000000e+00, double 8.000000e+00)
   %"&" = call double @"&"(double %b, double %a)
   %calltmp5 = call double @bar(double %a, double %b)
-  %cmptmp = fcmp ult double %calltmp5, %b
+  %"!" = call double @"!"(double %calltmp5)
+  %cmptmp = fcmp ult double %"!", %b
   br i1 %cmptmp, label %then, label %else
 
 then:                                             ; preds = %entry
