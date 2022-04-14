@@ -31,6 +31,10 @@ TEST(Lexer, Simple)
             sin(1*1.22 < 2 * (1 + 42)) + if(1+2) then 3 else 3.14 + for i=1, i<10, 1.0 in sin(1)
         def operator | 10(l,r)
             1
+        def operator!(l)
+            1
+        def operator&10(l,r)
+            1
 
     )CODE";
 
@@ -93,6 +97,21 @@ TEST(Lexer, Simple)
         {static_cast<unsigned char>(')')},
         {Def{}},
         {Operator{"|"}},
+        {10.0},
+        {static_cast<unsigned char>('(')},
+        {Identifier{"l"}},
+        {static_cast<unsigned char>(',')},
+        {Identifier{"r"}},
+        {static_cast<unsigned char>(')')},
+        {1.0},
+        {Def{}},
+        {Operator{"!"}},
+        {static_cast<unsigned char>('(')},
+        {Identifier{"l"}},
+        {static_cast<unsigned char>(')')},
+        {1.0},
+        {Def{}},
+        {Operator{"&"}},
         {10.0},
         {static_cast<unsigned char>('(')},
         {Identifier{"l"}},
@@ -170,6 +189,13 @@ private:
     void visit(mk::ast::Variable & variable) override { ss << variable.name; }
 
     void visit(mk::ast::Literal & literal) override { ss << literal.value; }
+
+    void visit(mk::ast::UnaryExpr & unary_expr) override
+    {
+        ss << unary_expr.op << "";
+        if (unary_expr.operand)
+            unary_expr.operand->accept(*this);
+    }
 
     void visit(mk::ast::BinExpr & bin_expr) override
     {
@@ -272,8 +298,12 @@ TEST(Parser, Simple)
     const auto code = R"CODE(
         1+2
         extern bar(a,b)
+        def operator!(l)
+            if(l) then 0 else 1
+        def operator&100(l,r)
+            0
         def foo(a, b)
-            1 + (2*3) + 2 * 3 + 2 + bar(1,2) + for i=1, i<10, 2 in if(a * b) then bar(1,3) else foo(4,5) + 1 * 3
+            1 + (2*3) + 2 * 3 + 2 + !bar(1,2) * !a & !b + for i=1, i<10, 2 in if(a * b) then bar(1,3) else foo(4,5) + 1 * 3
     )CODE";
 
     std::stringstream ss;
@@ -295,8 +325,16 @@ TEST(Parser, Simple)
     const std::string expected =
         R"CODE((1+2)
 extern bar(a,b)
+def !(l)
+if(l)
+then
+0
+else
+1
+def &(l,r)
+0
 def foo(a,b)
-(((((1+(2*3))+(2*3))+2)+bar(1,2))+for i=1, (i<10), 2 in
+(((((1+(2*3))+(2*3))+2)+(!bar(1,2)*(!a&!b)))+for i=1, (i<10), 2 in
 if((a*b))
 then
 bar(1,3)
@@ -313,8 +351,9 @@ TEST(CodeGen, Simple)
 
     const auto code = R"CODE(
         extern bar(a,b)
+        extern operator&100(l,r)
         def foo(a, b)
-            1 + (2*3+a) + 4 * 5 + 6 + bar(7,8) * b + (if(bar(a,b) < b) then a*b else a + b * bar(13,14)) + for i=0,i<10,2 in bar(a,b)
+            1 + (2*3+a) + 4 * 5 + 6 + bar(7,8) * b & a + (if(bar(a,b) < b) then a*b else a + b * bar(13,14)) + for i=0,i<10,2 in bar(a,b)
         def main()
             foo(9,10)
     )CODE";
@@ -340,9 +379,12 @@ source_filename = "my cool jit"
 
 declare double @bar(double, double)
 
+declare double @"&"(double, double)
+
 define double @foo(double %a, double %b) {
 entry:
   %calltmp = call double @bar(double 7.000000e+00, double 8.000000e+00)
+  %"&" = call double @"&"(double %b, double %a)
   %calltmp5 = call double @bar(double %a, double %b)
   %cmptmp = fcmp ult double %calltmp5, %b
   br i1 %cmptmp, label %then, label %else
@@ -373,7 +415,7 @@ after:                                            ; preds = %loop
   %addtmp1 = fadd double %addtmp, 1.000000e+00
   %addtmp2 = fadd double %addtmp1, 2.000000e+01
   %addtmp3 = fadd double %addtmp2, 6.000000e+00
-  %multmp = fmul double %b, %calltmp
+  %multmp = fmul double %calltmp, %"&"
   %addtmp4 = fadd double %addtmp3, %multmp
   %addtmp10 = fadd double %addtmp4, %iftmp
   %addtmp14 = fadd double %addtmp10, 0.000000e+00

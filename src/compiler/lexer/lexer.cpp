@@ -72,7 +72,8 @@ void Lexer::next()
                 while (!input.empty() && std::isspace(c = input.front()))
                     input.remove_prefix(1);
                 std::string opcode;
-                while (!input.empty() && !std::isspace(c = input.front()))
+                while (!input.empty() && !std::isspace(c = input.front())
+                       && c != '(' && !std::isdigit(c))
                 {
                     opcode += c;
                     input.remove_prefix(1);

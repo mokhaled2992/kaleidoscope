@@ -126,6 +126,11 @@ void CodeGen::visit(ast::BinExpr & bin_expr)
         default:
             break;
         }
+
+    using Arg = llvm::Value *;
+    Arg args[2] = {l, r};
+    auto * function = module->getFunction(bin_expr.op);
+    result = builder->CreateCall(function, args, bin_expr.op);
 }
 
 void CodeGen::visit(ast::CallExpr & call_expr)
@@ -406,6 +411,11 @@ void CodeGen::visit(ast::ForExpr & f)
         result =
             llvm::Constant::getNullValue(llvm::Type::getDoubleTy(*context));
     }
+}
+
+void CodeGen::visit(ast::UnaryExpr &)
+{
+    result = std::monostate{};
 }
 
 }  // namespace mk

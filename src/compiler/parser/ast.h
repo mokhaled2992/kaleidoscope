@@ -49,6 +49,25 @@ public:
     double value;
 };
 
+class UnaryExpr : public Expr
+{
+public:
+    UnaryExpr(std::string && op, std::unique_ptr<Expr> && operand)
+        : op(std::move(op)), operand(std::move(operand))
+    {}
+
+    void accept(Visitor & visitor) override { visitor.visit(*this); }
+
+    void accept_children(Visitor & visitor) override
+    {
+        if (operand)
+            operand->accept(visitor);
+    }
+
+    std::string op;
+    std::unique_ptr<Expr> operand;
+};
+
 class BinExpr : public Expr
 {
 public:
@@ -161,16 +180,8 @@ public:
 class ProtoType : public Node
 {
 public:
-    ProtoType(std::string && name,
-              std::optional<std::int64_t> && precedence,
-              std::vector<std::string> && args)
-        : name(std::move(name))
-        , precedence(std::move(precedence))
-        , args(std::move(args))
-    {}
-
     ProtoType(std::string && name, std::vector<std::string> && args)
-        : ProtoType(std::move(name), std::nullopt, std::move(args))
+        : name(std::move(name)), args(std::move(args))
     {}
 
     ProtoType(ProtoType &&) = default;
@@ -179,7 +190,6 @@ public:
     void accept_children(Visitor & visitor) override {}
 
     std::string name;
-    std::optional<int64_t> precedence;
     std::vector<std::string> args;
 };
 

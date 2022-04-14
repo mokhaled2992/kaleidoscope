@@ -20,10 +20,10 @@ Parser::Parser(Lexer & lexer)
       })
 {}
 
-void Parser::Precedence::push(std::string && op, std::int64_t value)
+void Parser::Precedence::push(const std::string & op, std::int64_t value)
 {
     std::lock_guard lock(mutex);
-    map.emplace(std::move(op), value);
+    map.emplace(op, value);
 }
 
 std::optional<std::int64_t>
@@ -66,7 +66,7 @@ Parser::parse_bin_expr_rhs(std::int64_t previous,
 
         lexer.next();
 
-        auto rhs = parse_primary_expr();
+        auto rhs = parse_unary_expr();
 
         auto next = parse_bin_op();
 
@@ -226,9 +226,29 @@ std::unique_ptr<ast::Expr> Parser::parse_primary_expr()
     return nullptr;
 }
 
+std::unique_ptr<ast::Expr> Parser::parse_unary_expr()
+{
+    if (auto expr = parse_primary_expr())
+        return expr;
+
+    if (const auto p = std::get_if<unsigned char>(&lexer.current()))
+    {
+        if (std::ispunct(*p))
+        {
+            std::string op(1, *p);
+            lexer.next();
+            auto expr = parse_unary_expr();
+            return std::make_unique<ast::UnaryExpr>(std::move(op),
+                                                    std::move(expr));
+        }
+    }
+
+    return nullptr;
+}
+
 std::unique_ptr<ast::Expr> Parser::parse_expr()
 {
-    if (auto lhs = parse_primary_expr())
+    if (auto lhs = parse_unary_expr())
     {
         return parse_bin_expr_rhs(0, std::move(lhs));
     }
@@ -250,10 +270,8 @@ std::unique_ptr<ast::Node> Parser::parse_def()
 std::unique_ptr<ast::ProtoType> Parser::parse_proto_type()
 {
     std::string name;
-    std::optional<std::int64_t> precedence;
     std::vector<std::string> params;
 
-    bool is_operator = false;
     if (const auto p = std::get_if<Identifier>(&lexer.current()))
     {
         name = std::move(p->value);
@@ -261,12 +279,11 @@ std::unique_ptr<ast::ProtoType> Parser::parse_proto_type()
     }
     else if (const auto p = std::get_if<Operator>(&lexer.current()))
     {
-        is_operator = true;
         name = std::move(p->value);
         lexer.next();
         if (const auto p = std::get_if<double>(&lexer.current()))
         {
-            precedence = std::move(*p);
+            precedence.push(name, std::move(*p));
             lexer.next();
         }
     }
@@ -278,11 +295,8 @@ std::unique_ptr<ast::ProtoType> Parser::parse_proto_type()
         {
             if (lexer.current().is(')'))
             {
-                if (is_operator && params.size() > 1 && !precedence)
-                    return nullptr;
                 lexer.next();
                 return std::make_unique<ast::ProtoType>(std::move(name),
-                                                        std::move(precedence),
                                                         std::move(params));
             }
             else if (const auto p = std::get_if<Identifier>(&lexer.current()))

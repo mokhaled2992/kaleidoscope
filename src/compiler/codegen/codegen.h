@@ -37,6 +37,7 @@ public:
 private:
     void visit(ast::Variable &) override;
     void visit(ast::Literal &) override;
+    void visit(ast::UnaryExpr &) override;
     void visit(ast::BinExpr &) override;
     void visit(ast::CallExpr &) override;
     void visit(ast::ConditionalExpr &) override;

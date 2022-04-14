@@ -46,6 +46,8 @@ private:
     std::unique_ptr<ast::Expr> parse_primary_expr();
     // call-expr := identifier() | identifier(expr ,expr*)
     std::unique_ptr<ast::Expr> parse_call_expr(std::string && name);
+    // unary-expr = op unary-expr | primary-expr
+    std::unique_ptr<ast::Expr> parse_unary_expr();
     std::unique_ptr<ast::Expr>
     parse_bin_expr_rhs(std::int64_t previous,
                        std::unique_ptr<ast::Expr> && lhs);
@@ -62,7 +64,7 @@ private:
         Precedence(std::unordered_map<std::string, std::int64_t> && init)
             : map(std::move(init))
         {}
-        void push(std::string && op, std::int64_t value);
+        void push(const std::string & op, std::int64_t value);
         std::optional<std::int64_t>
         get(const std::optional<std::string> & op) const;
 

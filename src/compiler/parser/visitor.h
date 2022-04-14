@@ -8,6 +8,7 @@ namespace ast
 
 class Variable;
 class Literal;
+class UnaryExpr;
 class BinExpr;
 class CallExpr;
 class ConditionalExpr;
@@ -24,6 +25,7 @@ public:
 
     virtual void visit(Variable &) = 0;
     virtual void visit(Literal &) = 0;
+    virtual void visit(UnaryExpr &) = 0;
     virtual void visit(BinExpr &) = 0;
     virtual void visit(ConditionalExpr &) = 0;
     virtual void visit(ForExpr &) = 0;
