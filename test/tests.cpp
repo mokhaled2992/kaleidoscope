@@ -439,8 +439,12 @@ entry:
 TEST(driver, execute)
 {
     const std::string code = R"CODE(
+        def operator!(l)
+            0-l
+        def operator&100(l,r)
+            if(l) then if(r) then 1 else 0 else 0
         def foo(a, b)
-            1 + (2*3+a) + 4 * 5 + 6 * b * if(a<b)then 16*b else 32*a
+            2*6&1 + !1 + (2*3+a) + 4 * 5 + 6 * b * if(a<b)then 16*b else 32*a
         def main()
             foo(9,10)
     )CODE";
