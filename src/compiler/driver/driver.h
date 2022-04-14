@@ -36,8 +36,8 @@ public:
     {
         enum class Type
         {
-            shared,
-            object
+            Shared,
+            Static
         };
     };
     struct Compile
