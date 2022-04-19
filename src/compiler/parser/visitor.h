@@ -13,6 +13,7 @@ class BinExpr;
 class CallExpr;
 class ConditionalExpr;
 class ForExpr;
+class LetExpr;
 class ProtoType;
 class Function;
 class Error;
@@ -32,6 +33,7 @@ public:
     virtual void visit(CallExpr &) = 0;
     virtual void visit(ProtoType &) = 0;
     virtual void visit(Function &) = 0;
+    virtual void visit(LetExpr &) = 0;
     virtual void visit(Extern &) = 0;
     virtual void visit(Error &) = 0;
 };

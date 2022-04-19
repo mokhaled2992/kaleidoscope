@@ -8,6 +8,7 @@
 
 #include <map>
 #include <memory>
+#include <string_view>
 #include <variant>
 #include <vector>
 
@@ -15,6 +16,7 @@ namespace llvm
 {
 class Module;
 class Value;
+class AllocaInst;
 namespace legacy
 {
 class FunctionPassManager;
@@ -44,13 +46,18 @@ private:
     void visit(ast::ForExpr &) override;
     void visit(ast::ProtoType &) override;
     void visit(ast::Function &) override;
+    void visit(ast::LetExpr &) override;
     void visit(ast::Extern &) override;
     void visit(ast::Error &) override;
+
+    llvm::AllocaInst * CreateAlloca(llvm::Function * function,
+                                    std::string_view name,
+                                    llvm::Value * init = nullptr);
 
     std::unique_ptr<llvm::LLVMContext> context;
     std::unique_ptr<llvm::IRBuilder<>> builder;
     std::unique_ptr<llvm::Module> module;
-    std::map<std::string, llvm::Value *> named_values;
+    std::map<std::string, llvm::AllocaInst *> named_values;
     std::unique_ptr<llvm::legacy::FunctionPassManager> fpm;
 
     struct Error

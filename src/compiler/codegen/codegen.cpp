@@ -16,12 +16,26 @@
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
+#include "llvm/Transforms/Utils.h"
 
 #include <string_view>
 
 
 namespace mk
 {
+
+llvm::AllocaInst * CodeGen::CreateAlloca(llvm::Function * function,
+                                         std::string_view name,
+                                         llvm::Value * init)
+{
+    auto alloca = llvm::IRBuilder<>(&function->getEntryBlock(),
+                                    function->getEntryBlock().begin())
+                      .CreateAlloca(llvm::Type::getDoubleTy(*context), 0, name);
+    if (init)
+        builder->CreateStore(init, alloca);
+    return alloca;
+}
+
 CodeGen::CodeGen(const std::vector<std::unique_ptr<ast::Node>> & root)
     : context(std::make_unique<llvm::LLVMContext>())
     , builder(std::make_unique<llvm::IRBuilder<>>(*context))
@@ -29,6 +43,8 @@ CodeGen::CodeGen(const std::vector<std::unique_ptr<ast::Node>> & root)
     , fpm(std::make_unique<llvm::legacy::FunctionPassManager>(module.get()))
     , root(root)
 {
+    // Promote allocas to registers.
+    fpm->add(llvm::createPromoteMemoryToRegisterPass());
     // Do simple "peephole" optimizations and bit-twiddling optzns.
     fpm->add(llvm::createInstructionCombiningPass());
     // Reassociate expressions.
@@ -62,7 +78,9 @@ void CodeGen::visit(ast::Variable & variable)
     }
     else
     {
-        result = it->second;
+        result = builder->CreateLoad(llvm::Type::getDoubleTy(*context),
+                                     it->second,
+                                     variable.name);
     }
 }
 
@@ -121,6 +139,20 @@ void CodeGen::visit(ast::BinExpr & bin_expr)
             result = builder->CreateUIToFP(boolean,
                                            llvm::Type::getDoubleTy(*context),
                                            "booltmp");
+            return;
+        }
+        case '=':
+        {
+            if (const auto lhs =
+                    dynamic_cast<const ast::Variable *>(bin_expr.lhs.get()))
+                if (auto it = named_values.find(lhs->name);
+                    it != named_values.end())
+                {
+                    builder->CreateStore(r, it->second);
+                    result = r;
+                    return;
+                }
+            result = Error{"bad assignment expression"};
             return;
         }
         default:
@@ -223,7 +255,8 @@ void CodeGen::visit(ast::Function & fun)
 
         named_values.clear();
         for (auto & arg : function->args())
-            named_values.emplace(arg.getName(), &arg);
+            named_values.emplace(arg.getName(),
+                                 CreateAlloca(function, arg.getName(), &arg));
 
         if (fun.body)
         {
@@ -340,26 +373,22 @@ void CodeGen::visit(ast::ForExpr & f)
 
         auto function = builder->GetInsertBlock()->getParent();
         auto loop = llvm::BasicBlock::Create(*context, "loop", function);
-        builder->CreateBr(loop);
 
-        auto before = builder->GetInsertBlock();
+        auto loop_variable = CreateAlloca(function, f.name, init);
+
+        builder->CreateBr(loop);
 
         builder->SetInsertPoint(loop);
 
-        auto phi_node =
-            builder->CreatePHI(llvm::Type::getDoubleTy(*context), 2, f.name);
-
-        phi_node->addIncoming(init, before);
-
-        llvm::Value * old = nullptr;
+        llvm::AllocaInst * old = nullptr;
         if (auto it = named_values.find(f.name); it != named_values.cend())
         {
             old = it->second;
-            it->second = phi_node;
+            it->second = loop_variable;
         }
         else
         {
-            named_values.emplace(f.name, phi_node);
+            named_values.emplace(f.name, loop_variable);
         }
 
 
@@ -368,19 +397,22 @@ void CodeGen::visit(ast::ForExpr & f)
 
 
         llvm::Value * next = nullptr;
+        auto current = builder->CreateLoad(llvm::Type::getDoubleTy(*context),
+                                           loop_variable,
+                                           f.name);
         if (f.step)
         {
             result = std::monostate{};
             f.step->accept(*this);
             if (const auto p = std::get_if<llvm::Value *>(&result))
             {
-                next = builder->CreateFAdd(phi_node, *p, "next");
+                next = builder->CreateFAdd(current, *p, "next");
             }
         }
         else
         {
             next =
-                builder->CreateFAdd(phi_node,
+                builder->CreateFAdd(current,
                                     llvm::ConstantFP::get(*context,
                                                           llvm::APFloat(1.0)),
                                     "next");
@@ -395,8 +427,7 @@ void CodeGen::visit(ast::ForExpr & f)
                 llvm::ConstantFP::get(*context, llvm::APFloat(0.0)),
                 "condition");
 
-            auto loop_end = builder->GetInsertBlock();
-            phi_node->addIncoming(next, loop_end);
+            builder->CreateStore(next, loop_variable);
 
             auto after = llvm::BasicBlock::Create(*context, "after", function);
             builder->CreateCondBr(condition, loop, after);
@@ -428,6 +459,31 @@ void CodeGen::visit(ast::UnaryExpr & unary_expr)
                 result = builder->CreateCall(function, args, unary_expr.op);
             }
         }
+    }
+}
+
+void CodeGen::visit(ast::LetExpr & let)
+{
+    if (auto function = builder->GetInsertBlock()->getParent())
+    {
+        auto old = named_values;
+        result = std::monostate{};
+        for (auto & [name, value] : let.vars)
+        {
+            if (value)
+            {
+                value->accept(*this);
+                if (const auto p = std::get_if<llvm::Value *>(&result))
+                    named_values[name] = CreateAlloca(function, name, *p);
+            }
+        }
+
+        if (let.body)
+        {
+            let.body->accept(*this);
+        }
+
+        named_values = std::move(old);
     }
 }
 

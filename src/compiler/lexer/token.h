@@ -82,6 +82,12 @@ struct In : TokenBase
     constexpr static const char * const value = "in";
 };
 
+struct Let : TokenBase
+{
+    bool operator==(const Let &) const { return true; }
+    constexpr static const char * const value = "let";
+};
+
 struct Operator : TokenBase
 {
     bool operator==(const Operator & other) const
@@ -102,6 +108,7 @@ using TokenType = std::variant<Empty,
                                For,
                                In,
                                Operator,
+                               Let,
                                double,
                                unsigned char,
                                Invalid>;

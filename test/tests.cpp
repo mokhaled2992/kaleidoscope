@@ -28,7 +28,10 @@ TEST(Lexer, Simple)
         1+1
         extern sin(arg);
         def foo()
-            sin(1*1.22 < 2 * (1 + 42)) + if(1+2) then 3 else 3.14 + for i=1, i<10, 1.0 in sin(1)
+            let
+                x = 10
+            in
+                sin(1*1.22 < 2 * (1 + 42)) + if(1+2) then 3 else 3.14 + for i=1, i<10, 1.0 in sin(1)
         def operator | 10(l,r)
             1
         def operator!(l)
@@ -54,6 +57,11 @@ TEST(Lexer, Simple)
         {Identifier{"foo"}},
         {static_cast<unsigned char>('(')},
         {static_cast<unsigned char>(')')},
+        {Let{}},
+        {Identifier{"x"}},
+        {static_cast<unsigned char>('=')},
+        {10.0},
+        {In{}},
         {Identifier{"sin"}},
         {static_cast<unsigned char>('(')},
         {1.0},
@@ -171,6 +179,10 @@ TEST(Lexer, Simple)
                                          [&actual](const Operator & t) {
                                              actual.emplace_back(t);
                                              return false;
+                                         },
+                                         [&actual](const Let & t) {
+                                             actual.emplace_back(t);
+                                             return false;
                                          });
 
     do
@@ -286,6 +298,19 @@ private:
         f.body->accept(*this);
     }
 
+    void visit(mk::ast::LetExpr & let) override
+    {
+        ss << "let" << std::endl;
+        for (auto & [name, expr] : let.vars)
+        {
+            ss << name << "=";
+            expr->accept(*this);
+            ss << std::endl;
+        }
+        ss << "in" << std::endl;
+        let.body->accept(*this);
+    }
+
 public:
     TestVisitor(std::stringstream & ss) : ss(ss) {}
 };
@@ -303,7 +328,11 @@ TEST(Parser, Simple)
         def operator&100(l,r)
             0
         def foo(a, b)
-            1 + (2*3) + 2 * 3 + 2 + !bar(1,2) * !a & !b + for i=1, i<10, 2 in if(a * b) then bar(1,3) else foo(4,5) + 1 * 3
+            let
+                x = 1
+                y = 2
+            in
+                x + y + 1 + (2*3) + 2 * 3 + 2 + !bar(1,2) * !a & !b + for i=1, i<10, 2 in if(a * b) then bar(1,3) else foo(4,5) + 1 * 3
     )CODE";
 
     std::stringstream ss;
@@ -334,7 +363,11 @@ else
 def &(l,r)
 0
 def foo(a,b)
-(((((1+(2*3))+(2*3))+2)+(!bar(1,2)*(!a&!b)))+for i=1, (i<10), 2 in
+let
+x=1
+y=2
+in
+(((((((x+y)+1)+(2*3))+(2*3))+2)+(!bar(1,2)*(!a&!b)))+for i=1, (i<10), 2 in
 if((a*b))
 then
 bar(1,3)
@@ -388,42 +421,42 @@ define double @foo(double %a, double %b) {
 entry:
   %calltmp = call double @bar(double 7.000000e+00, double 8.000000e+00)
   %"&" = call double @"&"(double %b, double %a)
-  %calltmp5 = call double @bar(double %a, double %b)
-  %"!" = call double @"!"(double %calltmp5)
+  %calltmp12 = call double @bar(double %a, double %b)
+  %"!" = call double @"!"(double %calltmp12)
   %cmptmp = fcmp ult double %"!", %b
   br i1 %cmptmp, label %then, label %else
 
 then:                                             ; preds = %entry
-  %multmp6 = fmul double %a, %b
+  %multmp16 = fmul double %a, %b
   br label %ifcont
 
 else:                                             ; preds = %entry
-  %calltmp7 = call double @bar(double 1.300000e+01, double 1.400000e+01)
-  %multmp8 = fmul double %b, %calltmp7
-  %addtmp9 = fadd double %a, %multmp8
+  %calltmp19 = call double @bar(double 1.300000e+01, double 1.400000e+01)
+  %multmp20 = fmul double %b, %calltmp19
+  %addtmp21 = fadd double %a, %multmp20
   br label %ifcont
 
 ifcont:                                           ; preds = %else, %then
-  %iftmp = phi double [ %multmp6, %then ], [ %addtmp9, %else ]
+  %iftmp = phi double [ %multmp16, %then ], [ %addtmp21, %else ]
   br label %loop
 
 loop:                                             ; preds = %loop, %ifcont
-  %i = phi double [ 0.000000e+00, %ifcont ], [ %next, %loop ]
-  %calltmp11 = call double @bar(double %a, double %b)
-  %next = fadd double %i, 2.000000e+00
-  %cmptmp12 = fcmp ult double %i, 1.000000e+01
-  br i1 %cmptmp12, label %loop, label %after
+  %i.0 = phi double [ 0.000000e+00, %ifcont ], [ %next, %loop ]
+  %calltmp25 = call double @bar(double %a, double %b)
+  %next = fadd double %i.0, 2.000000e+00
+  %cmptmp28 = fcmp ult double %i.0, 1.000000e+01
+  br i1 %cmptmp28, label %loop, label %after
 
 after:                                            ; preds = %loop
   %addtmp = fadd double %a, 6.000000e+00
-  %addtmp1 = fadd double %addtmp, 1.000000e+00
-  %addtmp2 = fadd double %addtmp1, 2.000000e+01
-  %addtmp3 = fadd double %addtmp2, 6.000000e+00
+  %addtmp4 = fadd double %addtmp, 1.000000e+00
+  %addtmp5 = fadd double %addtmp4, 2.000000e+01
+  %addtmp6 = fadd double %addtmp5, 6.000000e+00
   %multmp = fmul double %calltmp, %"&"
-  %addtmp4 = fadd double %addtmp3, %multmp
-  %addtmp10 = fadd double %addtmp4, %iftmp
-  %addtmp14 = fadd double %addtmp10, 0.000000e+00
-  ret double %addtmp14
+  %addtmp9 = fadd double %addtmp6, %multmp
+  %addtmp22 = fadd double %addtmp9, %iftmp
+  %addtmp30 = fadd double %addtmp22, 0.000000e+00
+  ret double %addtmp30
 }
 
 define double @main() {
@@ -445,16 +478,27 @@ TEST(driver, execute)
             if(l) then if(r) then 1 else 0 else 0
         def foo(a, b)
             2*6&1 + !1 + (2*3+a) + 4 * 5 + 6 * b * if(a<b)then 16*b else 32*a
+        def operator:1(l,r) r
+        def baz()
+            let
+                x = 0
+            in
+                (for i = 1,i<10,1 in x = x + i) : x
+
         def main()
-            foo(9,10)
+            foo(9,10) + baz()
     )CODE";
 
     mk::Driver driver;
 
     mk::Driver::Action execute(mk::Driver::Execute{});
     driver(code, execute);
-    std::visit(mk::util::Overload([](double x) { ASSERT_EQ(x, 9636); },
-                                  [](...) { FAIL(); }),
+    std::visit(mk::util::Overload(
+                   [](double x) {
+                       ASSERT_EQ(x,
+                                 9636 + 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10);
+                   },
+                   [](...) { FAIL(); }),
                std::get<mk::Driver::Execute>(execute).result);
 }
 

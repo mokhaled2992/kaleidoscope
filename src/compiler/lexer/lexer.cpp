@@ -67,6 +67,10 @@ void Lexer::next()
             {
                 token = In();
             }
+            else if (value == Let::value)
+            {
+                token = Let();
+            }
             else if (value == "operator")
             {
                 while (!input.empty() && std::isspace(c = input.front()))

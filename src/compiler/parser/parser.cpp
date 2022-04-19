@@ -13,6 +13,7 @@ namespace mk
 Parser::Parser(Lexer & lexer)
     : lexer(lexer)
     , precedence({
+          {"=", 2},
           {"<", 10},
           {"+", 20},
           {"-", 20},
@@ -218,6 +219,30 @@ std::unique_ptr<ast::Expr> Parser::parse_primary_expr()
             }
         }
         return nullptr;
+    }
+    else if (lexer.current().is<Let>())
+    {
+        lexer.next();
+        std::vector<std::pair<std::string, std::unique_ptr<ast::Expr>>> vars;
+        while (const auto p = std::get_if<Identifier>(&lexer.current()))
+        {
+            auto name = p->value;
+            lexer.next();
+            if (lexer.current().is('='))
+            {
+                lexer.next();
+                auto value = parse_expr();
+                vars.emplace_back(std::move(name), std::move(value));
+            }
+        }
+
+        if (lexer.current().is<In>())
+        {
+            lexer.next();
+            auto body = parse_expr();
+            return std::make_unique<ast::LetExpr>(std::move(vars),
+                                                  std::move(body));
+        }
     }
     else if (lexer.current().is<Invalid>())
     {

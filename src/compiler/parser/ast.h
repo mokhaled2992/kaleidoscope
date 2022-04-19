@@ -26,6 +26,8 @@ public:
 
 class Expr : public Node
 {
+public:
+    ~Expr() override = default;
 };
 
 class Variable : public Expr
@@ -47,6 +49,29 @@ public:
     void accept_children(Visitor & visitor) override {}
 
     double value;
+};
+
+class LetExpr : public Expr
+{
+public:
+    LetExpr(std::vector<std::pair<std::string, std::unique_ptr<Expr>>> && vars,
+            std::unique_ptr<Expr> && body)
+        : vars(std::move(vars)), body(std::move(body))
+    {}
+
+    void accept(Visitor & visitor) override { visitor.visit(*this); }
+
+    void accept_children(Visitor & visitor) override
+    {
+        for (auto & [name, value] : vars)
+            if (value)
+                value->accept(visitor);
+        if (body)
+            body->accept(visitor);
+    }
+
+    std::vector<std::pair<std::string, std::unique_ptr<Expr>>> vars;
+    std::unique_ptr<Expr> body;
 };
 
 class UnaryExpr : public Expr
