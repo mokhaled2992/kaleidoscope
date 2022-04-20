@@ -4,30 +4,18 @@
 #include "compiler/lexer/lexer.h"
 #include "compiler/parser/parser.h"
 
-// #include "llvm/ADT/STLExtras.h"
-// #include "llvm/ADT/iterator_range.h"
-
+#include "llvm/Bitcode/BitcodeReader.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
 #include "llvm/Linker/Linker.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Support/TargetSelect.h"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Transforms/Utils/Cloning.h"
-
-// #include "llvm/ExecutionEngine/JITSymbol.h"
-// #include "llvm/ExecutionEngine/Orc/CompileUtils.h"
-// #include "llvm/ExecutionEngine/Orc/IRCompileLayer.h"
-// #include "llvm/ExecutionEngine/Orc/RTDyldObjectLinkingLayer.h"
-// #include "llvm/ExecutionEngine/RTDyldMemoryManager.h"
-// #include "llvm/IR/DataLayout.h"
-// #include "llvm/IR/Mangler.h"
-// #include "llvm/Support/DynamicLibrary.h"
-// #include "llvm/Support/raw_ostream.h"
-// #include "llvm/Target/TargetMachine.h"
-
 
 #include <algorithm>
 #include <iostream>
@@ -39,25 +27,24 @@
 namespace mk
 {
 
-Driver::Driver()
-{
-    // llvm::InitializeNativeTarget();
-    // llvm::InitializeNativeTargetAsmPrinter();
-    // llvm::InitializeNativeTargetAsmParser();
-    // llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
-}
+Driver::Driver() = default;
 
 Driver::~Driver() = default;
 
-void Driver::operator()(const std::string_view & src, Action & action)
+std::pair<std::unique_ptr<llvm::LLVMContext>, std::unique_ptr<llvm::Module>>
+Driver::compile(const std::string_view & src) const
 {
-
     Lexer lexer(src);
     Parser parser(lexer);
     CodeGen codegen(parser.parse());
 
     std::unique_ptr<llvm::Module> module(llvm::CloneModule(*codegen()));
 
+    return std::pair{std::move(codegen).LLVMContext(), std::move(module)};
+}
+
+std::unique_ptr<llvm::TargetMachine> Driver::target(llvm::Module & ir) const
+{
     llvm::InitializeNativeTarget();
     llvm::InitializeNativeTargetAsmPrinter();
     llvm::InitializeNativeTargetAsmParser();
@@ -71,38 +58,33 @@ void Driver::operator()(const std::string_view & src, Action & action)
     if (!target)
     {
         std::cerr << Error << std::endl;
-        return;
+        return nullptr;
     }
 
     llvm::TargetOptions Options;
     // Options.NoFramePointerElim = true;
     Options.MCOptions.AsmVerbose = true;
 
-    std::string MCPU = "";  // don't target specific cpu
-    std::string FeaturesStr = "";
+    const auto CPU = "generic";
+    const auto Features = "";
     std::unique_ptr<llvm::TargetMachine> target_machine(
         target->createTargetMachine(triple,
-                                    MCPU,
-                                    FeaturesStr,
+                                    CPU,
+                                    Features,
                                     Options,
                                     llvm::Reloc::PIC_,
                                     llvm::CodeModel::Large,
                                     llvm::CodeGenOpt::Default,
                                     true));
 
-    module->setDataLayout(target_machine->createDataLayout());
-    if (auto p = std::get_if<Execute>(&action))
-        execute(*module, *p);
-    else if (auto p = std::get_if<Link>(&action))
-    {
-        p->error = llvm::Linker::linkModules(*module,
-                                             std::unique_ptr<llvm::Module>{
-                                                 llvm::CloneModule(*module)});
-    }
+    ir.setDataLayout(target_machine->createDataLayout());
+    ir.setTargetTriple(triple);
+
+    return target_machine;
 }
 
-
-void Driver::execute(const llvm::Module & module, Execute & execute)
+std::variant<std::monostate, int64_t, double, char, void *>
+Driver::execute(const llvm::Module & module) const
 {
     std::string llvm_errors;
     std::unique_ptr<llvm::ExecutionEngine> execution_engine(
@@ -120,75 +102,72 @@ void Driver::execute(const llvm::Module & module, Execute & execute)
     const auto main_signature = execution_engine->FindFunctionNamed("main");
     if (!main || !main_signature)
     {
-        return;
+        return std::monostate{};
     }
 
     const auto return_type = main_signature->getReturnType();
 
     if (return_type->isIntegerTy(64))
     {
-        execute.result = reinterpret_cast<int64_t (*)()>(main)();
+        return reinterpret_cast<int64_t (*)()>(main)();
     }
     else if (return_type->isDoubleTy())
     {
-        execute.result = reinterpret_cast<double (*)()>(main)();
+        return reinterpret_cast<double (*)()>(main)();
     }
     else if (return_type->isPointerTy())
     {
-        execute.result = reinterpret_cast<void * (*)()>(main)();
+        return reinterpret_cast<void * (*)()>(main)();
     }
     else if (return_type->isVoidTy())
     {
         reinterpret_cast<void (*)()>(main)();
     }
+    return std::monostate{};
 }
-// ModuleHandle Compiler::addModule(std::unique_ptr<Module> M)
-// {
-//     auto K = execution_session.allocateVModule();
-//     cantFail(compiler_layer.addModule(K, std::move(M)));
-//     module_keys.push_back(K);
-//     return K;
-// }
 
-// void Compiler::removeModule(ModuleHandle K)
-// {
-//     module_keys.erase(find(module_keys, K));
-//     compiler_layer.removeModule(K);
-// }
+std::variant<std::monostate, int64_t, double, char, void *>
+Driver::operator()(const std::string_view & src, Execute)
+{
+    const auto [context, ir] = compile(src);
 
-// llvm::JITSymbol Compiler::findSymbol(const std::string Name)
-// {
-//     return findMangledSymbol(mangle(Name));
-// }
+    const auto t = target(*ir);
 
-// std::string Compiler::mangle(const std::string & Name)
-// {
-//     std::string MangledName;
-//     {
-//         llvm::raw_string_ostream MangledNameStream(MangledName);
-//         llvm::Mangler::getNameWithPrefix(MangledNameStream, Name, DL);
-//     }
-//     return MangledName;
-// }
+    return execute(*ir);
+}
 
-// llvm::JITSymbol Compiler::findMangledSymbol(const std::string & Name)
-// {
-//     const bool ExportedSymbolsOnly = true;
-//     // Search modules in reverse order: from last added to first added.
-//     // This is the opposite of the usual search order for dlsym, but makes
-//     more
-//     // sense in a REPL where we want to bind to the newest available
-//     definition. for (auto H : llvm::make_range(ModuleKeys.rbegin(),
-//     ModuleKeys.rend()))
-//         if (auto Sym =
-//                 compiler_layer.findSymbolIn(H, Name, ExportedSymbolsOnly))
-//             return Sym;
+std::pair<std::unique_ptr<llvm::LLVMContext>, std::unique_ptr<llvm::Module>>
+Driver::operator()(const std::vector<std::string_view> & srcs, Link)
+{
+    // This workaround writes the module + context into a bitcode stream then
+    // re-loads the module with a given context
+    const auto merge =
+        [](const llvm::Module & ir, llvm::LLVMContext & context)  //
+    {
+        std::string s;
+        llvm::raw_string_ostream stream(s);
+        llvm::WriteBitcodeToFile(ir, stream);
+        return std::move(
+            *llvm::parseBitcodeFile(*llvm::MemoryBuffer::getMemBuffer(s),
+                                    context));
+    };
 
-//     // If we can't find the symbol in the JIT, try looking in the host
-//     process. if (auto SymAddr =
-//             llvm::RTDyldMemoryManager::getSymbolAddressInProcess(Name))
-//         return llvm::JITSymbol(SymAddr, llvm::JITSymbolFlags::Exported);
+    auto context = std::make_unique<llvm::LLVMContext>();
+    auto module = std::make_unique<llvm::Module>("test", *context);
+    llvm::Linker linker(*module);
 
-//     return nullptr;
-// }
+    for (const auto & src : srcs)
+    {
+        auto [_, ir] = compile(src);
+
+        const auto t = target(*ir);
+
+        if (linker.linkInModule(merge(*ir, *context)))
+            return std::pair{nullptr, nullptr};
+    }
+
+    return std::pair{std::move(context), std::move(module)};
+}
+
+
 }  // namespace mk

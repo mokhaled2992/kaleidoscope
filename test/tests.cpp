@@ -399,8 +399,6 @@ TEST(CodeGen, Simple)
 
     auto module = codegen();
 
-    std::error_code error;
-
     std::string actual;
     {
         llvm::raw_string_ostream ss(actual);
@@ -491,32 +489,51 @@ TEST(driver, execute)
 
     mk::Driver driver;
 
-    mk::Driver::Action execute(mk::Driver::Execute{});
-    driver(code, execute);
     std::visit(mk::util::Overload(
                    [](double x) {
                        ASSERT_EQ(x,
                                  9636 + 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10);
                    },
                    [](...) { FAIL(); }),
-               std::get<mk::Driver::Execute>(execute).result);
+               driver(code, mk::Driver::Execute{}));
 }
 
 TEST(driver, link)
 {
-    const std::string code = R"CODE(
+    using namespace std::literals;
+    using namespace mk;
+
+    const std::string_view code1 = R"CODE(
+        def bar(a,b) a
+    )CODE";
+
+    const std::string_view code2 = R"CODE(
         extern bar(a,b)
+        extern baz(n)
         def foo(a, b)
             1 + (2*3+a) + 4 * 5 + 6 * b
         def main()
-            foo(9,10)
+            foo(9,10) + baz(10)
     )CODE";
 
-    mk::Driver driver;
 
-    mk::Driver::Action link(mk::Driver::Link{});
+    Driver driver;
 
-    driver(code, link);
+    const auto [_, module] = driver(std::vector{code2, code1}, Driver::Link{});
 
-    ASSERT_TRUE(std::get<mk::Driver::Link>(link).error);
+    const auto baz = module->getFunction("baz");
+    ASSERT_TRUE(baz);
+    ASSERT_TRUE(baz->empty());
+
+    const auto bar = module->getFunction("bar");
+    ASSERT_TRUE(bar);
+    ASSERT_FALSE(bar->empty());
+
+    const auto foo = module->getFunction("foo");
+    ASSERT_TRUE(foo);
+    ASSERT_FALSE(foo->empty());
+
+    const auto main = module->getFunction("main");
+    ASSERT_TRUE(main);
+    ASSERT_FALSE(bar->empty());
 }

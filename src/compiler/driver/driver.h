@@ -26,10 +26,10 @@ class Driver
 public:
     struct Execute
     {
-        std::variant<std::monostate, int64_t, double, char, void *> result;
     };
     struct Link
     {
+
         bool error;
     };
     struct Library
@@ -47,31 +47,24 @@ public:
     {
     };
 
-    using Action =
-        std::variant<std::monostate, Execute, Link, Library, Compile, IR>;
-
     Driver();
+
     ~Driver();
 
-    void operator()(const std::string_view & src, Action & action);
+    std::variant<std::monostate, int64_t, double, char, void *>
+    operator()(const std::string_view & src, Execute);
 
-    // ModuleHandle addModule(std::unique_ptr<Module> M);
-    // void removeModule(ModuleHandle K);
-    // llvm::JITSymbol findSymbol(const std::string Name);
+    std::pair<std::unique_ptr<llvm::LLVMContext>, std::unique_ptr<llvm::Module>>
+    operator()(const std::vector<std::string_view> & srcs, Link);
 
 private:
-    void execute(const llvm::Module & module, Execute & execute);
-    // std::string mangle(const std::string & Name);
-    // llvm::JITSymbol findMangledSymbol(const std::string & Name);
+    std::pair<std::unique_ptr<llvm::LLVMContext>, std::unique_ptr<llvm::Module>>
+    compile(const std::string_view & src) const;
 
-    // std::unique_ptr<ExecutionEngine> execution_engine;
+    std::unique_ptr<llvm::TargetMachine> target(llvm::Module & ir) const;
 
-    // std::shared_ptr<llvm::SymbolResolver> resolver;
-    // std::unique_ptr<llvm::TargetMachine> target_machine;
-    // const llvm::DataLayout data_layout;
-    // llvm::orc::ObjectLinkingLayer object_layer;
-    // llvm::orc::IRCompileLayer compiler_layer;
-    // std::vector<ModuleHandle> module_keys;
+    std::variant<std::monostate, int64_t, double, char, void *>
+    execute(const llvm::Module & module) const;
 };
 }  // namespace mk
 

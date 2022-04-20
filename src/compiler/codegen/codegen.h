@@ -36,6 +36,11 @@ public:
     ~CodeGen();
     const llvm::Module * operator()();
 
+    std::unique_ptr<llvm::LLVMContext> LLVMContext() &&
+    {
+        return std::move(context);
+    }
+
 private:
     void visit(ast::Variable &) override;
     void visit(ast::Literal &) override;
