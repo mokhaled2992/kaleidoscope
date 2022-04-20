@@ -34,16 +34,20 @@ public:
     };
     struct Library
     {
-        enum class Type
+        struct Static
         {
-            Shared,
-            Static
+        };
+        struct Shared
+        {
         };
     };
     struct Compile
     {
     };
     struct IR
+    {
+    };
+    struct Object
     {
     };
 
@@ -56,6 +60,8 @@ public:
 
     std::pair<std::unique_ptr<llvm::LLVMContext>, std::unique_ptr<llvm::Module>>
     operator()(const std::vector<std::string_view> & srcs, Link);
+
+    void operator()(const std::string_view & src, Object) const;
 
 private:
     std::pair<std::unique_ptr<llvm::LLVMContext>, std::unique_ptr<llvm::Module>>

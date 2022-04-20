@@ -537,3 +537,25 @@ TEST(driver, link)
     ASSERT_TRUE(main);
     ASSERT_FALSE(bar->empty());
 }
+
+TEST(driver, object)
+{
+    using namespace std::literals;
+    using namespace mk;
+
+    const std::string_view code = R"CODE(
+        extern bar(a,b)
+        extern baz(n)
+        def foo(a, b)
+            1 + (2*3+a) + 4 * 5 + 6 * b
+    )CODE";
+
+
+    Driver driver;
+
+    driver(code, Driver::Object{});
+
+    ASSERT_TRUE(false);
+
+    // TODO improve testing
+}
