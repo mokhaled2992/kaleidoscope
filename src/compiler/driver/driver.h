@@ -29,8 +29,6 @@ public:
     };
     struct Link
     {
-
-        bool error;
     };
     struct Library
     {
@@ -47,6 +45,9 @@ public:
     struct IR
     {
     };
+    struct Bitcode
+    {
+    };
     struct Object
     {
     };
@@ -61,7 +62,10 @@ public:
     std::pair<std::unique_ptr<llvm::LLVMContext>, std::unique_ptr<llvm::Module>>
     operator()(const std::vector<std::string_view> & srcs, Link);
 
-    void operator()(const std::string_view & src, Object) const;
+    void operator()(const std::string_view & src,
+                    Object,
+                    const std::string_view & filename) const;
+    void operator()(const std::string_view & src, Bitcode) const;
 
 private:
     std::pair<std::unique_ptr<llvm::LLVMContext>, std::unique_ptr<llvm::Module>>

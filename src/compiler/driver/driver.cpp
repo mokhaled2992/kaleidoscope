@@ -172,16 +172,16 @@ Driver::operator()(const std::vector<std::string_view> & srcs, Link)
     return std::pair{std::move(context), std::move(module)};
 }
 
-void Driver::operator()(const std::string_view & src, Object) const
+void Driver::operator()(const std::string_view & src,
+                        Object,
+                        const std::string_view & filename) const
 {
     auto [_, ir] = compile(src);
 
     const auto t = target(*ir);
 
     std::error_code EC;
-    llvm::raw_fd_ostream dest("output.o",
-                              EC,
-                              llvm::sys::fs::OpenFlags::OF_None);
+    llvm::raw_fd_ostream dest(filename, EC, llvm::sys::fs::OpenFlags::OF_None);
 
     if (EC)
         return;
@@ -195,5 +195,17 @@ void Driver::operator()(const std::string_view & src, Object) const
     dest.flush();
 }
 
+void Driver::operator()(const std::string_view & src, Bitcode) const
+{
+    auto [_, ir] = compile(src);
+
+    const auto t = target(*ir);
+
+    std::error_code EC;
+    llvm::raw_fd_ostream stream("output.bc",
+                                EC,
+                                llvm::sys::fs::OpenFlags::OF_None);
+    llvm::WriteBitcodeToFile(*ir, stream);
+}
 
 }  // namespace mk

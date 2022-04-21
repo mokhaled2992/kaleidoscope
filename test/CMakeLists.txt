@@ -28,6 +28,16 @@ target_link_options(tests
                     PUBLIC
                     "-rdynamic")
 
+################ extern ################
+
+add_library(extern
+            STATIC
+            extern.cpp)
+
+set_target_properties(extern
+                      PROPERTIES
+                      ARCHIVE_OUTPUT_DIRECTORY lib)
+
 include(GoogleTest)
 
 gtest_discover_tests(tests)

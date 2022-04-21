@@ -10,10 +10,10 @@
 
 #include "util/overload.h"
 
+#include "lld/Common/Driver.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Support/raw_ostream.h"
-
 
 #include <iostream>
 #include <sstream>
@@ -544,18 +544,55 @@ TEST(driver, object)
     using namespace mk;
 
     const std::string_view code = R"CODE(
-        extern bar(a,b)
-        extern baz(n)
+        extern myexit(b)
         def foo(a, b)
             1 + (2*3+a) + 4 * 5 + 6 * b
+        def main()
+            myexit(foo(4,2))
     )CODE";
-
 
     Driver driver;
 
-    driver(code, Driver::Object{});
+    driver(code, Driver::Object{}, "output.o");
 
-    ASSERT_TRUE(false);
+    std::string s;
+    llvm::raw_string_ostream stream(s);
+    lld::elf::link({"ld",
+                    "-dynamic-linker=/lib64/ld-linux-x86-64.so.2",
+                    "-ooutput.out",
+                    "-L/lib/x86_64-linux-gnu/",
+                    "output.o",
+                    "test/lib/libextern.a",
+                    "-lc",
+                    "-entry=main"},
+                   stream,
+                   stream,
+                   true,
+                   false);
+
+    // ASSERT_TRUE(false);
+
+    // TODO improve testing
+}
+
+TEST(driver, bitcode)
+{
+    using namespace std::literals;
+    using namespace mk;
+
+    const std::string_view code = R"CODE(
+        extern myexit(b)
+        def foo(a, b)
+            1 + (2*3+a) + 4 * 5 + 6 * b
+        def main()
+            myexit(foo(4,2))
+    )CODE";
+
+    Driver driver;
+
+    driver(code, Driver::Bitcode{});
+
+    // ASSERT_TRUE(false);
 
     // TODO improve testing
 }

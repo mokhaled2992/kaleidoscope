@@ -97,7 +97,9 @@ target_link_libraries(driver
                       parser
                       codegen
                       LLVM
-                      )
+                      lldELF
+                      lldCommon
+                      z)
 
 target_link_options(driver
                     PUBLIC
