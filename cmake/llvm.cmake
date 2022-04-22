@@ -14,6 +14,9 @@ FetchContent_Declare(
   GIT_PROGRESS TRUE
   SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/llvm-project/src
   BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/llvm-project/build
+  # we do not want FetchContent to configure the project automatically
+  # so we point it to non existing subdir
+  SOURCE_SUBDIR null
 )
 FetchContent_MakeAvailable(llvm-project)
 

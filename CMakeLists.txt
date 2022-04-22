@@ -4,6 +4,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 Set(CMAKE_CXX_COMPILER "/usr/bin/g++-11")
 include(llvm)
+include(poco)
 
 project(kaleidoscope LANGUAGES CXX)
 
@@ -99,6 +100,11 @@ target_link_libraries(driver
                       LLVM
                       lldELF
                       lldCommon
+                      PocoFoundation
+                      PocoNet
+                      PocoNetSSL
+                      PocoUtil
+                      PocoXML
                       z)
 
 target_link_options(driver
