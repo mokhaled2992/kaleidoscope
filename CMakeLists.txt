@@ -3,8 +3,10 @@ cmake_minimum_required(VERSION 3.20)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 Set(CMAKE_CXX_COMPILER "/usr/bin/g++-11")
+
 include(llvm)
 include(poco)
+include(fmt)
 
 project(kaleidoscope LANGUAGES CXX)
 
@@ -94,6 +96,7 @@ target_link_directories(driver
 
 target_link_libraries(driver
                       PUBLIC
+                      fmt
                       lexer
                       parser
                       codegen
@@ -101,10 +104,6 @@ target_link_libraries(driver
                       lldELF
                       lldCommon
                       PocoFoundation
-                      PocoNet
-                      PocoNetSSL
-                      PocoUtil
-                      PocoXML
                       z)
 
 target_link_options(driver

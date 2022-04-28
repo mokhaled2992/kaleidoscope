@@ -37,6 +37,13 @@ public:
         };
         struct Shared
         {
+            struct Args
+            {
+                std::string dynamic_linker;
+                std::string outfile;
+                std::vector<std::string> link_paths;
+                std::vector<std::string> link_objects;
+            };
         };
     };
     struct Compile
@@ -50,6 +57,10 @@ public:
     };
     struct Object
     {
+        struct Args
+        {
+            std::string outfile;
+        };
     };
 
     Driver();
@@ -62,10 +73,11 @@ public:
     std::pair<std::unique_ptr<llvm::LLVMContext>, std::unique_ptr<llvm::Module>>
     operator()(const std::vector<std::string_view> & srcs, Link);
 
-    void operator()(const std::string_view & src,
-                    Object,
-                    const std::string_view & filename) const;
+    void operator()(const std::string_view & src, const Object::Args &) const;
     void operator()(const std::string_view & src, Bitcode) const;
+
+    bool operator()(const std::string_view & src,
+                    const Library::Shared::Args &) const;
 
 private:
     std::pair<std::unique_ptr<llvm::LLVMContext>, std::unique_ptr<llvm::Module>>

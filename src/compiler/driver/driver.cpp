@@ -4,6 +4,9 @@
 #include "compiler/lexer/lexer.h"
 #include "compiler/parser/parser.h"
 
+#include "util/lld.h"
+
+#include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
@@ -18,6 +21,11 @@
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Transforms/Utils/Cloning.h"
+
+#include "lld/Common/Driver.h"
+
+
+#include "fmt/core.h"
 
 
 #include <algorithm>
@@ -173,20 +181,24 @@ Driver::operator()(const std::vector<std::string_view> & srcs, Link)
 }
 
 void Driver::operator()(const std::string_view & src,
-                        Object,
-                        const std::string_view & filename) const
+                        const Object::Args & args) const
 {
     auto [_, ir] = compile(src);
 
     const auto t = target(*ir);
 
     std::error_code EC;
-    llvm::raw_fd_ostream dest(filename, EC, llvm::sys::fs::OpenFlags::OF_None);
+    llvm::raw_fd_ostream dest(fmt::format("{}.o", args.outfile),
+                              EC,
+                              llvm::sys::fs::OpenFlags::OF_None);
 
     if (EC)
         return;
 
     llvm::legacy::PassManager pass;
+
+    llvm::TargetLibraryInfoImpl TLII(llvm::Triple(t->getTargetTriple()));
+    pass.add(new llvm::TargetLibraryInfoWrapperPass(TLII));
 
     if (t->addPassesToEmitFile(pass, dest, nullptr, llvm::CGFT_ObjectFile))
         return;
@@ -206,6 +218,35 @@ void Driver::operator()(const std::string_view & src, Bitcode) const
                                 EC,
                                 llvm::sys::fs::OpenFlags::OF_None);
     llvm::WriteBitcodeToFile(*ir, stream);
+}
+
+bool Driver::operator()(const std::string_view & src,
+                        const Library::Shared::Args & args) const
+{
+
+    (*this)(src, Object::Args{.outfile = args.outfile});
+
+    std::string s;
+    llvm::raw_string_ostream stream(s);
+    std::vector<std::string> raw_args = {"ld",
+                                         "-shared",
+                                         fmt::format("-dynamic-linker={}",
+                                                     args.dynamic_linker),
+                                         fmt::format("-o{}.so", args.outfile)};
+
+    for (const auto & l : args.link_paths)
+        raw_args.emplace_back(fmt::format("-L{}", l));
+
+    raw_args.emplace_back(fmt::format("{}.o", args.outfile));
+    std::copy(args.link_objects.cbegin(),
+              args.link_objects.cend(),
+              std::back_inserter(raw_args));
+
+    std::vector<const char *> lld_args;
+    lld_args.reserve(raw_args.size());
+    for (const auto & arg : raw_args)
+        lld_args.emplace_back(arg.data());
+    return lld::elf::ScopedLink{}(lld_args, stream, stream, false, false);
 }
 
 }  // namespace mk
