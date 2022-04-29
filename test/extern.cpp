@@ -11,6 +11,11 @@ double myprint(double arg)
 
 double foo(double, double);
 
+double bar(double a, double b)
+{
+    return a + b;
+}
+
 int main()
 {
     exit(foo(4, 3));

@@ -18,6 +18,8 @@
 
 #include "Poco/Process.h"
 
+#include "fmt/core.h"
+
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -547,31 +549,27 @@ TEST(driver, object)
     using namespace mk;
 
     const std::string_view code = R"CODE(
+        extern bar(a,b)
         def foo(a, b)
-            1 + (2*3+a) + 4 * 5 + 6 * b
+            1 + (2*3+a) + 4 * 5 + 6 * b + bar(a,a)
     )CODE";
 
     Driver driver;
+    Driver::Object::Args args{.outfile = "output"};
+    driver(code, args);
 
-    driver(code, Driver::Object::Args{.outfile = "output"});
+    mk::lld::elf::ScopedLink{}({"ld",
+                                "-dynamic-linker=/lib64/ld-linux-x86-64.so.2",
+                                fmt::format("-o{}.out", args.outfile),
+                                "-L/lib/x86_64-linux-gnu/",
+                                fmt::format("{}.o", args.outfile),
+                                "test/lib/libextern.a",
+                                "/lib/x86_64-linux-gnu/crt1.o",
+                                "-lc"});
 
-    std::string s;
-    llvm::raw_string_ostream stream(s);
-    mk::lld::elf::ScopedLink{}(
-        std::vector{"ld",
-                    "-dynamic-linker=/lib64/ld-linux-x86-64.so.2",
-                    "-ooutput.out",
-                    "-L/lib/x86_64-linux-gnu/",
-                    "output.o",
-                    "test/lib/libextern.a",
-                    "/lib/x86_64-linux-gnu/crt1.o",
-                    "-lc"},
-        stream,
-        stream,
-        false,
-        false);
-
-    ASSERT_EQ(Poco::Process::launch("./output.out", {}).wait(), 49);
+    ASSERT_EQ(
+        Poco::Process::launch(fmt::format("./{}.out", args.outfile), {}).wait(),
+        57);
 }
 
 TEST(driver, shared_library)
@@ -580,38 +578,33 @@ TEST(driver, shared_library)
     using namespace mk;
 
     const std::string_view code = R"CODE(
+        extern bar(a,b)
         def foo(a, b)
-            1 + (2*3+a) + 4 * 5 + 6 * b + 42 + 13
+            1 + (2*3+a) + 4 * 5 + 6 * b + 42 + 13 + bar(a,b)
     )CODE";
 
     Driver driver;
 
-    ASSERT_TRUE(
-        driver(code,
-               Driver::Library::Shared::Args{.dynamic_linker =
-                                                 "/lib64/ld-linux-x86-64.so.2",
-                                             .outfile = "output",
-                                             .link_paths = {},
-                                             .link_objects = {}}));
+    Driver::Library::Shared::Args args{.dynamic_linker =
+                                           "/lib64/ld-linux-x86-64.so.2",
+                                       .outfile = "output",
+                                       .link_paths = {},
+                                       .link_objects = {}};
+    ASSERT_TRUE(driver(code, args));
 
-    std::string s;
-    llvm::raw_string_ostream stream(s);
-    mk::lld::elf::ScopedLink{}(
-        std::vector{"ld",
-                    "-dynamic-linker=/lib64/ld-linux-x86-64.so.2",
-                    "-ooutput.out",
-                    "-L/lib/x86_64-linux-gnu/",
-                    "output.so",
-                    "test/lib/libextern.a",
-                    "/lib/x86_64-linux-gnu/crt1.o",
-                    "-lc",
-                    "-rpath=."},
-        stream,
-        stream,
-        false,
-        false);
+    mk::lld::elf::ScopedLink{}({"ld",
+                                "-dynamic-linker=/lib64/ld-linux-x86-64.so.2",
+                                fmt::format("-o{}.out", args.outfile),
+                                "-L/lib/x86_64-linux-gnu/",
+                                fmt::format("{}.so", args.outfile),
+                                "test/lib/libextern.a",
+                                "/lib/x86_64-linux-gnu/crt1.o",
+                                "-lc",
+                                "-rpath=."});
 
-    ASSERT_EQ(Poco::Process::launch("./output.out", {}).wait(), 104);
+    ASSERT_EQ(
+        Poco::Process::launch(fmt::format("./{}.out", args.outfile), {}).wait(),
+        111);
 }
 
 TEST(driver, bitcode)
@@ -620,16 +613,34 @@ TEST(driver, bitcode)
     using namespace mk;
 
     const std::string_view code = R"CODE(
-        extern myexit(b)
+        extern bar(a,b)
         def foo(a, b)
-            1 + (2*3+a) + 4 * 5 + 6 * b
-        def main()
-            myexit(foo(4,2))
+            1 + (2*3+a) + 4 * 5 + 6 * b + 42 - b - bar(a,b)
     )CODE";
 
     Driver driver;
+    Driver::Bitcode::Args args{.outfile = "output"};
+    driver(code, args);
 
-    driver(code, Driver::Bitcode{});
+    ASSERT_EQ(Poco::Process::launch("toolstack/bin/llc",
+                                    {"-filetype=obj",
+                                     fmt::format("{}.bc", args.outfile),
+                                     "-o",
+                                     fmt::format("{}.o", args.outfile)})
+                  .wait(),
+              0);
 
-    // TODO improve testing
+    mk::lld::elf::ScopedLink{}({"ld",
+                                "-dynamic-linker=/lib64/ld-linux-x86-64.so.2",
+                                fmt::format("-o{}.out", args.outfile),
+                                "-L/lib/x86_64-linux-gnu/",
+                                fmt::format("{}.o", args.outfile),
+                                "test/lib/libextern.a",
+                                "/lib/x86_64-linux-gnu/crt1.o",
+                                "-lc",
+                                "-rpath=."});
+
+    ASSERT_EQ(
+        Poco::Process::launch(fmt::format("./{}.out", args.outfile), {}).wait(),
+        81);
 }

@@ -54,6 +54,10 @@ public:
     };
     struct Bitcode
     {
+        struct Args
+        {
+            std::string outfile;
+        };
     };
     struct Object
     {
@@ -74,7 +78,7 @@ public:
     operator()(const std::vector<std::string_view> & srcs, Link);
 
     void operator()(const std::string_view & src, const Object::Args &) const;
-    void operator()(const std::string_view & src, Bitcode) const;
+    void operator()(const std::string_view & src, const Bitcode::Args &) const;
 
     bool operator()(const std::string_view & src,
                     const Library::Shared::Args &) const;

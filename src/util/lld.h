@@ -3,6 +3,8 @@
 
 #include "lld/Common/Driver.h"
 
+#include <vector>
+
 namespace mk
 {
 namespace lld
@@ -11,10 +13,15 @@ namespace elf
 {
 struct ScopedLink
 {
-    template <typename... Ts>
-    bool operator()(Ts &&... ts) const
+    bool operator()(const std::vector<std::string> & args) const
     {
-        return ::lld::elf::link(std::forward<Ts>(ts)...);
+        std::string out, err;
+        llvm::raw_string_ostream out_stream(out), err_stream(err);
+        std::vector<const char *> lld_args;
+        lld_args.reserve(args.size());
+        for (const auto & arg : args)
+            lld_args.emplace_back(arg.data());
+        return ::lld::elf::link(lld_args, out_stream, err_stream, false, false);
     }
 
     ~ScopedLink() { ::lld::CommonLinkerContext::destroy(); }

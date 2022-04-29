@@ -207,14 +207,15 @@ void Driver::operator()(const std::string_view & src,
     dest.flush();
 }
 
-void Driver::operator()(const std::string_view & src, Bitcode) const
+void Driver::operator()(const std::string_view & src,
+                        const Bitcode::Args & args) const
 {
     auto [_, ir] = compile(src);
 
     const auto t = target(*ir);
 
     std::error_code EC;
-    llvm::raw_fd_ostream stream("output.bc",
+    llvm::raw_fd_ostream stream(fmt::format("{}.bc", args.outfile),
                                 EC,
                                 llvm::sys::fs::OpenFlags::OF_None);
     llvm::WriteBitcodeToFile(*ir, stream);
@@ -226,8 +227,6 @@ bool Driver::operator()(const std::string_view & src,
 
     (*this)(src, Object::Args{.outfile = args.outfile});
 
-    std::string s;
-    llvm::raw_string_ostream stream(s);
     std::vector<std::string> raw_args = {"ld",
                                          "-shared",
                                          fmt::format("-dynamic-linker={}",
@@ -242,11 +241,7 @@ bool Driver::operator()(const std::string_view & src,
               args.link_objects.cend(),
               std::back_inserter(raw_args));
 
-    std::vector<const char *> lld_args;
-    lld_args.reserve(raw_args.size());
-    for (const auto & arg : raw_args)
-        lld_args.emplace_back(arg.data());
-    return lld::elf::ScopedLink{}(lld_args, stream, stream, false, false);
+    return lld::elf::ScopedLink{}(raw_args);
 }
 
 }  // namespace mk
