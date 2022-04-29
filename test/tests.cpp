@@ -644,3 +644,41 @@ TEST(driver, bitcode)
         Poco::Process::launch(fmt::format("./{}.out", args.outfile), {}).wait(),
         81);
 }
+
+TEST(driver, ir)
+{
+    using namespace std::literals;
+    using namespace mk;
+
+    const std::string_view code = R"CODE(
+        extern bar(a,b)
+        def foo(a, b)
+            1 + (2*3+a) + 4 * 5 + 6 * b + 42 - b - bar(b,b)
+    )CODE";
+
+    Driver driver;
+    Driver::IR::Args args{.outfile = "output"};
+    driver(code, args);
+
+    ASSERT_EQ(Poco::Process::launch("toolstack/bin/llc",
+                                    {"-filetype=obj",
+                                     fmt::format("{}.ll", args.outfile),
+                                     "-o",
+                                     fmt::format("{}.o", args.outfile)})
+                  .wait(),
+              0);
+
+    mk::lld::elf::ScopedLink{}({"ld",
+                                "-dynamic-linker=/lib64/ld-linux-x86-64.so.2",
+                                fmt::format("-o{}.out", args.outfile),
+                                "-L/lib/x86_64-linux-gnu/",
+                                fmt::format("{}.o", args.outfile),
+                                "test/lib/libextern.a",
+                                "/lib/x86_64-linux-gnu/crt1.o",
+                                "-lc",
+                                "-rpath=."});
+
+    ASSERT_EQ(
+        Poco::Process::launch(fmt::format("./{}.out", args.outfile), {}).wait(),
+        82);
+}

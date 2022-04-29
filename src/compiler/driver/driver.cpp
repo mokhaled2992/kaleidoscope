@@ -244,4 +244,17 @@ bool Driver::operator()(const std::string_view & src,
     return lld::elf::ScopedLink{}(raw_args);
 }
 
+void Driver::operator()(const std::string_view & src,
+                        const IR::Args & args) const
+{
+    auto [_, ir] = compile(src);
+
+    std::error_code EC;
+    llvm::raw_fd_ostream stream(fmt::format("{}.ll", args.outfile),
+                                EC,
+                                llvm::sys::fs::OpenFlags::OF_None);
+
+    ir->print(stream, nullptr);
+}
+
 }  // namespace mk

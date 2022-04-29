@@ -51,6 +51,10 @@ public:
     };
     struct IR
     {
+        struct Args
+        {
+            std::string outfile;
+        };
     };
     struct Bitcode
     {
@@ -82,6 +86,8 @@ public:
 
     bool operator()(const std::string_view & src,
                     const Library::Shared::Args &) const;
+
+    void operator()(const std::string_view & src, const IR::Args &) const;
 
 private:
     std::pair<std::unique_ptr<llvm::LLVMContext>, std::unique_ptr<llvm::Module>>
