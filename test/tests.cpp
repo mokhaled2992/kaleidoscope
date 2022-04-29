@@ -594,8 +594,6 @@ TEST(driver, shared_library)
     Driver::Library::Shared::Args args;
     args.dynamic_linker = "/lib64/ld-linux-x86-64.so.2",
     args.outfile = "output";
-    args.link_paths = {};
-    args.link_objects = {};
 
     ASSERT_TRUE(driver(code, args));
 
@@ -714,8 +712,8 @@ TEST(driver, executable)
     Driver::Executable::Args args;
     args.dynamic_linker = "/lib64/ld-linux-x86-64.so.2",
     args.outfile = "output";
-    args.link_paths = {"/lib/x86_64-linux-gnu/", "test/lib"};
-    args.link_objects = {"/lib/x86_64-linux-gnu/crt1.o"};
+    args.paths = {"/lib/x86_64-linux-gnu/", "test/lib"};
+    args.objects = {"/lib/x86_64-linux-gnu/crt1.o"};
     args.libs = {"c", "mylib"};
     args.rpath = {};
 

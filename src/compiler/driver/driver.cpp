@@ -235,7 +235,7 @@ bool Driver::operator()(const std::string_view & src,
         fmt::format("-dynamic-linker={}", args.dynamic_linker),
         fmt::format("-o{}.{}", args.outfile, args.extension())};
 
-    for (const auto & l : args.link_paths)
+    for (const auto & l : args.paths)
         raw_args.emplace_back(fmt::format("-L{}", l));
 
     for (const auto & l : args.libs)
@@ -247,8 +247,8 @@ bool Driver::operator()(const std::string_view & src,
               std::back_inserter(raw_args));
 
     raw_args.emplace_back(fmt::format("{}.o", args.outfile));
-    std::copy(args.link_objects.cbegin(),
-              args.link_objects.cend(),
+    std::copy(args.objects.cbegin(),
+              args.objects.cend(),
               std::back_inserter(raw_args));
 
     return lld::elf::ScopedLink{}(raw_args);

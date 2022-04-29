@@ -38,8 +38,8 @@ public:
         {
             std::string dynamic_linker;
             std::string outfile;
-            std::vector<std::string> link_paths;
-            std::vector<std::string> link_objects;
+            std::vector<std::string> paths;
+            std::vector<std::string> objects;
             std::vector<std::string> libs;
 
             virtual std::string extension() const = 0;
@@ -57,7 +57,7 @@ public:
         };
         struct Shared
         {
-            struct Args : Elf::Args
+            struct Args final : Elf::Args
             {
                 std::string extension() const override { return "so"; }
                 std::vector<std::string> additional_flags() const override
@@ -70,7 +70,7 @@ public:
     };
     struct Executable
     {
-        struct Args : Elf::Args
+        struct Args final : Elf::Args
         {
             std::string rpath;
 
