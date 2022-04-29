@@ -69,7 +69,7 @@ target_link_directories(codegen
 target_link_libraries(codegen
                       PUBLIC
                       parser
-                      LLVM)
+                      ${CMAKE_CURRENT_BINARY_DIR}/toolstack/lib/libLLVM.so)
 
 target_link_options(codegen
                     PUBLIC
