@@ -14,7 +14,7 @@ project(kaleidoscope LANGUAGES CXX)
 include_directories(/usr/include/c++/11)
 link_directories(/usr/lib32)
 link_libraries(stdc++)
-add_compile_options(-std=c++20
+add_compile_options(-std=c++2a
                     -ggdb3
                     -Wall
                     -O3)
