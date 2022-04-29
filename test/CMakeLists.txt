@@ -30,11 +30,11 @@ target_link_options(tests
 
 ################ extern ################
 
-add_library(extern
+add_library(mylib
             STATIC
-            extern.cpp)
+            mylib.cpp)
 
-set_target_properties(extern
+set_target_properties(mylib
                       PROPERTIES
                       ARCHIVE_OUTPUT_DIRECTORY lib)
 

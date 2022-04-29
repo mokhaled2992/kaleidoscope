@@ -553,6 +553,8 @@ TEST(driver, object)
         extern bar(a,b)
         def foo(a, b)
             1 + (2*3+a) + 4 * 5 + 6 * b + bar(a,a)
+        def main()
+            foo(4,3)
     )CODE";
 
     Driver driver;
@@ -563,8 +565,9 @@ TEST(driver, object)
                                 "-dynamic-linker=/lib64/ld-linux-x86-64.so.2",
                                 fmt::format("-o{}.out", args.outfile),
                                 "-L/lib/x86_64-linux-gnu/",
+                                "-Ltest/lib/",
                                 fmt::format("{}.o", args.outfile),
-                                "test/lib/libextern.a",
+                                "-lmylib",
                                 "/lib/x86_64-linux-gnu/crt1.o",
                                 "-lc"});
 
@@ -582,6 +585,8 @@ TEST(driver, shared_library)
         extern bar(a,b)
         def foo(a, b)
             1 + (2*3+a) + 4 * 5 + 6 * b + 42 + 13 + bar(a,b)
+        def main()
+            foo(4,3)
     )CODE";
 
     Driver driver;
@@ -597,8 +602,9 @@ TEST(driver, shared_library)
                                 "-dynamic-linker=/lib64/ld-linux-x86-64.so.2",
                                 fmt::format("-o{}.out", args.outfile),
                                 "-L/lib/x86_64-linux-gnu/",
+                                "-Ltest/lib/",
                                 fmt::format("{}.so", args.outfile),
-                                "test/lib/libextern.a",
+                                "-lmylib",
                                 "/lib/x86_64-linux-gnu/crt1.o",
                                 "-lc",
                                 "-rpath=."});
@@ -617,6 +623,8 @@ TEST(driver, bitcode)
         extern bar(a,b)
         def foo(a, b)
             1 + (2*3+a) + 4 * 5 + 6 * b + 42 - b - bar(a,b)
+        def main()
+            foo(4,3)
     )CODE";
 
     Driver driver;
@@ -635,8 +643,9 @@ TEST(driver, bitcode)
                                 "-dynamic-linker=/lib64/ld-linux-x86-64.so.2",
                                 fmt::format("-o{}.out", args.outfile),
                                 "-L/lib/x86_64-linux-gnu/",
+                                "-Ltest/lib/",
                                 fmt::format("{}.o", args.outfile),
-                                "test/lib/libextern.a",
+                                "-lmylib",
                                 "/lib/x86_64-linux-gnu/crt1.o",
                                 "-lc",
                                 "-rpath=."});
@@ -655,6 +664,8 @@ TEST(driver, ir)
         extern bar(a,b)
         def foo(a, b)
             1 + (2*3+a) + 4 * 5 + 6 * b + 42 - b - bar(b,b)
+        def main()
+            foo(4,3)
     )CODE";
 
     Driver driver;
@@ -673,8 +684,9 @@ TEST(driver, ir)
                                 "-dynamic-linker=/lib64/ld-linux-x86-64.so.2",
                                 fmt::format("-o{}.out", args.outfile),
                                 "-L/lib/x86_64-linux-gnu/",
+                                "-Ltest/lib/",
                                 fmt::format("{}.o", args.outfile),
-                                "test/lib/libextern.a",
+                                "-lmylib",
                                 "/lib/x86_64-linux-gnu/crt1.o",
                                 "-lc",
                                 "-rpath=."});
