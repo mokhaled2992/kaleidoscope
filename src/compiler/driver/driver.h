@@ -8,6 +8,8 @@
 #include "llvm/ExecutionEngine/Orc/ObjectLinkingLayer.h"
 #include "llvm/IR/DataLayout.h"
 
+#include "fmt/format.h"
+
 #include <memory>
 #include <variant>
 #include <vector>
@@ -30,6 +32,24 @@ public:
     struct Link
     {
     };
+    struct Elf
+    {
+        struct Args
+        {
+            std::string dynamic_linker;
+            std::string outfile;
+            std::vector<std::string> link_paths;
+            std::vector<std::string> link_objects;
+            std::vector<std::string> libs;
+
+            virtual std::string extension() const = 0;
+            virtual std::vector<std::string> additional_flags() const
+            {
+                return {};
+            }
+            virtual ~Args() = 0;
+        };
+    };
     struct Library
     {
         struct Static
@@ -37,15 +57,32 @@ public:
         };
         struct Shared
         {
-            struct Args
+            struct Args : Elf::Args
             {
-                std::string dynamic_linker;
-                std::string outfile;
-                std::vector<std::string> link_paths;
-                std::vector<std::string> link_objects;
+                std::string extension() const override { return "so"; }
+                std::vector<std::string> additional_flags() const override
+                {
+                    return {"-shared"};
+                }
+                ~Args() override = default;
             };
         };
     };
+    struct Executable
+    {
+        struct Args : Elf::Args
+        {
+            std::string rpath;
+
+            std::string extension() const override { return "out"; }
+            std::vector<std::string> additional_flags() const override
+            {
+                return {fmt::format("-rpath={}", rpath)};
+            }
+            ~Args() override = default;
+        };
+    };
+
     struct Compile
     {
     };
@@ -87,9 +124,14 @@ public:
     bool operator()(const std::string_view & src,
                     const Library::Shared::Args &) const;
 
+    bool operator()(const std::string_view & src,
+                    const Executable::Args &) const;
+
     void operator()(const std::string_view & src, const IR::Args &) const;
 
 private:
+    bool operator()(const std::string_view & src, const Elf::Args &) const;
+
     std::pair<std::unique_ptr<llvm::LLVMContext>, std::unique_ptr<llvm::Module>>
     compile(const std::string_view & src) const;
 

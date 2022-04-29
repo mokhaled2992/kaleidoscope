@@ -226,19 +226,25 @@ void Driver::operator()(const std::string_view & src,
 }
 
 bool Driver::operator()(const std::string_view & src,
-                        const Library::Shared::Args & args) const
+                        const Elf::Args & args) const
 {
-
     (*this)(src, Object::Args{.outfile = args.outfile});
 
-    std::vector<std::string> raw_args = {"ld",
-                                         "-shared",
-                                         fmt::format("-dynamic-linker={}",
-                                                     args.dynamic_linker),
-                                         fmt::format("-o{}.so", args.outfile)};
+    std::vector<std::string> raw_args = {
+        "ld",
+        fmt::format("-dynamic-linker={}", args.dynamic_linker),
+        fmt::format("-o{}.{}", args.outfile, args.extension())};
 
     for (const auto & l : args.link_paths)
         raw_args.emplace_back(fmt::format("-L{}", l));
+
+    for (const auto & l : args.libs)
+        raw_args.emplace_back(fmt::format("-l{}", l));
+
+    auto additional_flags = args.additional_flags();
+    std::move(additional_flags.begin(),
+              additional_flags.end(),
+              std::back_inserter(raw_args));
 
     raw_args.emplace_back(fmt::format("{}.o", args.outfile));
     std::copy(args.link_objects.cbegin(),
@@ -260,5 +266,19 @@ void Driver::operator()(const std::string_view & src,
 
     ir->print(stream, nullptr);
 }
+
+bool Driver::operator()(const std::string_view & src,
+                        const Executable::Args & args) const
+{
+    return (*this)(src, static_cast<const Elf::Args &>(args));
+}
+
+bool Driver::operator()(const std::string_view & src,
+                        const Library::Shared::Args & args) const
+{
+    return (*this)(src, static_cast<const Elf::Args &>(args));
+}
+
+Driver::Elf::Args::~Args() {}
 
 }  // namespace mk

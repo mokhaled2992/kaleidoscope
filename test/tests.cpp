@@ -591,11 +591,12 @@ TEST(driver, shared_library)
 
     Driver driver;
 
-    Driver::Library::Shared::Args args{.dynamic_linker =
-                                           "/lib64/ld-linux-x86-64.so.2",
-                                       .outfile = "output",
-                                       .link_paths = {},
-                                       .link_objects = {}};
+    Driver::Library::Shared::Args args;
+    args.dynamic_linker = "/lib64/ld-linux-x86-64.so.2",
+    args.outfile = "output";
+    args.link_paths = {};
+    args.link_objects = {};
+
     ASSERT_TRUE(driver(code, args));
 
     mk::lld::elf::ScopedLink{}({"ld",
@@ -628,7 +629,8 @@ TEST(driver, bitcode)
     )CODE";
 
     Driver driver;
-    Driver::Bitcode::Args args{.outfile = "output"};
+    Driver::Bitcode::Args args;
+    args.outfile = "output";
     driver(code, args);
 
     ASSERT_EQ(Poco::Process::launch("toolstack/bin/llc",
@@ -669,7 +671,8 @@ TEST(driver, ir)
     )CODE";
 
     Driver driver;
-    Driver::IR::Args args{.outfile = "output"};
+    Driver::IR::Args args;
+    args.outfile = "output";
     driver(code, args);
 
     ASSERT_EQ(Poco::Process::launch("toolstack/bin/llc",
@@ -696,35 +699,29 @@ TEST(driver, ir)
         82);
 }
 
-TEST(driver, exe)
+TEST(driver, executable)
 {
     using namespace std::literals;
     using namespace mk;
 
     const std::string_view code = R"CODE(
+        extern bar(a,b)
         def main()
-            1 + (2*3+4) + 4 * 5 + 6 * 3 + 42 - 3 - 33
+            1 + (2*3+4) + 4 * 5 + 6 * 3 + 42 - 3 - 33 + bar(1,2)
     )CODE";
 
-    {
-        Driver driver;
-        Driver::IR::Args args{.outfile = "output"};
-        driver(code, args);
-    }
-
     Driver driver;
-    Driver::Object::Args args{.outfile = "output"};
-    driver(code, args);
+    Driver::Executable::Args args;
+    args.dynamic_linker = "/lib64/ld-linux-x86-64.so.2",
+    args.outfile = "output";
+    args.link_paths = {"/lib/x86_64-linux-gnu/", "test/lib"};
+    args.link_objects = {"/lib/x86_64-linux-gnu/crt1.o"};
+    args.libs = {"c", "mylib"};
+    args.rpath = {};
 
-    mk::lld::elf::ScopedLink{}({"ld",
-                                "-dynamic-linker=/lib64/ld-linux-x86-64.so.2",
-                                fmt::format("-o{}.out", args.outfile),
-                                fmt::format("{}.o", args.outfile),
-                                "/lib/x86_64-linux-gnu/crt1.o",
-                                "-L/lib/x86_64-linux-gnu/",
-                                "-lc"});
+    ASSERT_TRUE(driver(code, args));
 
     ASSERT_EQ(
         Poco::Process::launch(fmt::format("./{}.out", args.outfile), {}).wait(),
-        55);
+        58);
 }
