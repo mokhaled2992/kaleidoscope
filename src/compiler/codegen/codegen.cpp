@@ -209,7 +209,8 @@ void CodeGen::visit(ast::CallExpr & call_expr)
 void CodeGen::visit(ast::ProtoType & prototype)
 {
     auto signature = llvm::FunctionType::get(
-        llvm::Type::getDoubleTy(*context),
+        prototype.name == "main" ? llvm::Type::getInt32Ty(*context)
+                                 : llvm::Type::getDoubleTy(*context),
         std::vector<llvm::Type *>(prototype.args.size(),
                                   llvm::Type::getDoubleTy(*context)),
         false);
@@ -268,7 +269,15 @@ void CodeGen::visit(ast::Function & fun)
                 function->eraseFromParent();
                 goto err_body;
             }
-            builder->CreateRet(*ret);
+
+            builder->CreateRet(
+                fun.prototype->name == "main"
+                        && function->getReturnType()->isIntegerTy(32)
+                    ? builder->CreateFPToSI(*ret,
+                                            llvm::Type::getInt32Ty(*context),
+                                            "status")
+                    : *ret);
+
             llvm::verifyFunction(*function);
 
             fpm->run(*function);

@@ -122,6 +122,10 @@ Driver::execute(const llvm::Module & module) const
     {
         return reinterpret_cast<int64_t (*)()>(main)();
     }
+    if (return_type->isIntegerTy(32))
+    {
+        return reinterpret_cast<int32_t (*)()>(main)();
+    }
     else if (return_type->isDoubleTy())
     {
         return reinterpret_cast<double (*)()>(main)();

@@ -462,10 +462,11 @@ after:                                            ; preds = %loop
   ret double %addtmp30
 }
 
-define double @main() {
+define i32 @main() {
 entry:
   %calltmp = call double @foo(double 9.000000e+00, double 1.000000e+01)
-  ret double %calltmp
+  %status = fptosi double %calltmp to i32
+  ret i32 %status
 }
 )CODE";
 
@@ -681,4 +682,37 @@ TEST(driver, ir)
     ASSERT_EQ(
         Poco::Process::launch(fmt::format("./{}.out", args.outfile), {}).wait(),
         82);
+}
+
+TEST(driver, exe)
+{
+    using namespace std::literals;
+    using namespace mk;
+
+    const std::string_view code = R"CODE(
+        def main()
+            1 + (2*3+4) + 4 * 5 + 6 * 3 + 42 - 3 - 33
+    )CODE";
+
+    {
+        Driver driver;
+        Driver::IR::Args args{.outfile = "output"};
+        driver(code, args);
+    }
+
+    Driver driver;
+    Driver::Object::Args args{.outfile = "output"};
+    driver(code, args);
+
+    mk::lld::elf::ScopedLink{}({"ld",
+                                "-dynamic-linker=/lib64/ld-linux-x86-64.so.2",
+                                fmt::format("-o{}.out", args.outfile),
+                                fmt::format("{}.o", args.outfile),
+                                "/lib/x86_64-linux-gnu/crt1.o",
+                                "-L/lib/x86_64-linux-gnu/",
+                                "-lc"});
+
+    ASSERT_EQ(
+        Poco::Process::launch(fmt::format("./{}.out", args.outfile), {}).wait(),
+        55);
 }
