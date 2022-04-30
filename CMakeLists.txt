@@ -96,8 +96,9 @@ target_link_directories(driver
                         PUBLIC
                         ${CMAKE_CURRENT_BINARY_DIR}/toolstack/lib)
 
-add_dependencies(driver poco-install)
-add_dependencies(driver fmt-project-install)
+add_dependencies(driver
+                 poco-install
+                 fmt-project-install)
 
 target_link_libraries(driver
                       PUBLIC
