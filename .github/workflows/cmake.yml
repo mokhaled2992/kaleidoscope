@@ -23,9 +23,6 @@ jobs:
     - name: CCache
       run: sudo apt install ccache
 
-    - name: CCache
-      run: ls /usr/lib/libLLVM.so
-
     - name: Cache
       uses: actions/cache@v3
       with:

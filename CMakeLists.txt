@@ -66,10 +66,17 @@ target_link_directories(codegen
                         PUBLIC
                         ${CMAKE_CURRENT_BINARY_DIR}/toolstack/lib/)
 
+add_library(LLVM
+            SHARED
+            IMPORTED)
+set_target_properties(LLVM
+                      PROPERTIES
+                      IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/toolstack/lib/libLLVM.so)
+
 target_link_libraries(codegen
                       PUBLIC
                       parser
-                      -L${CMAKE_CURRENT_BINARY_DIR}/toolstack/lib/ -lLLVM)
+                      LLVM)
 
 target_link_options(codegen
                     PUBLIC
