@@ -23,7 +23,7 @@ jobs:
     - name: CCache
       run: sudo apt install ccache
 
-   - name: CCache
+    - name: CCache
       run: ls /usr/lib/libLLVM.so
 
     - name: Cache
