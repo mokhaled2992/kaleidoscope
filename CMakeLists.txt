@@ -64,7 +64,8 @@ target_link_directories(codegen
                         PUBLIC
                         ${CMAKE_CURRENT_BINARY_DIR}/toolstack/lib/)
 
-add_dependencies(codegen llvm-project-install)
+add_dependencies(codegen
+                 llvm-project-install)
 
 target_link_libraries(codegen
                       PUBLIC
