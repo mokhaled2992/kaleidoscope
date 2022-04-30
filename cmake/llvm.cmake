@@ -40,3 +40,7 @@ ExternalProject_Add(llvm-project
   BINARY_DIR        "${llvm-project_BINARY_DIR}"
   DOWNLOAD_COMMAND ""
   CONFIGURE_COMMAND "")
+
+# create target for install step to add a
+# dependency to it in the main project
+ExternalProject_Add_StepTargets(llvm-project install)

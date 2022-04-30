@@ -49,8 +49,6 @@ set_target_properties(parser
                       LIBRARY_OUTPUT_DIRECTORY lib)
 
 
-
-
 ################ CODEGEN ################
 
 add_library(codegen
@@ -66,17 +64,13 @@ target_link_directories(codegen
                         PUBLIC
                         ${CMAKE_CURRENT_BINARY_DIR}/toolstack/lib/)
 
-add_library(LLVM
-            SHARED
-            IMPORTED)
-set_target_properties(LLVM
-                      PROPERTIES
-                      IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/toolstack/lib/libLLVM.so)
+add_dependencies(codegen llvm-project-install)
 
 target_link_libraries(codegen
                       PUBLIC
                       parser
                       LLVM)
+
 
 target_link_options(codegen
                     PUBLIC
@@ -101,6 +95,9 @@ target_include_directories(driver
 target_link_directories(driver
                         PUBLIC
                         ${CMAKE_CURRENT_BINARY_DIR}/toolstack/lib)
+
+add_dependencies(driver poco-install)
+add_dependencies(driver fmt-project-install)
 
 target_link_libraries(driver
                       PUBLIC

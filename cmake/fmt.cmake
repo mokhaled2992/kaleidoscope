@@ -37,3 +37,7 @@ ExternalProject_Add(fmt-project
   BINARY_DIR        "${fmt-project_BINARY_DIR}"
   DOWNLOAD_COMMAND ""
   CONFIGURE_COMMAND "")
+
+# create target for install step to add a
+# dependency to it in the main project
+ExternalProject_Add_StepTargets(fmt-project install)
