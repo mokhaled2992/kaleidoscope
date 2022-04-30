@@ -66,10 +66,19 @@ target_link_directories(codegen
                         PUBLIC
                         ${CMAKE_CURRENT_BINARY_DIR}/toolstack/lib)
 
+# work around to prevent using LLVM system lib
+add_library(LLVM
+            UNKNOWN
+            IMPORTED)
+
+set_target_properties(LLVM
+                      PROPERTIES
+                      IMPORTED_LOCATION ${CMAKE_CURRENT_BINARY_DIR}/toolstack/lib/libLLVM.so)
+
 target_link_libraries(codegen
                       PUBLIC
                       parser
-                      ${CMAKE_CURRENT_BINARY_DIR}/toolstack/lib/libLLVM.so)
+                      LLVM)
 
 target_link_options(codegen
                     PUBLIC
