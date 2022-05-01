@@ -4,6 +4,7 @@
 #include "lld/Common/Driver.h"
 
 #include <vector>
+#include <iostream>
 
 namespace mk
 {
@@ -21,7 +22,11 @@ struct ScopedLink
         lld_args.reserve(args.size());
         for (const auto & arg : args)
             lld_args.emplace_back(arg.data());
-        return ::lld::elf::link(lld_args, out_stream, err_stream, false, false);
+        const auto ok =
+            ::lld::elf::link(lld_args, out_stream, err_stream, false, false);
+        if (!ok)
+            std::cout << out << std::endl << err << std::endl;
+        return ok;
     }
 
     ~ScopedLink() { ::lld::CommonLinkerContext::destroy(); }
