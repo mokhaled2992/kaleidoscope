@@ -15,6 +15,11 @@ struct Overload : Ts...
     {}
 };
 
+template <typename T, typename... Ts>
+Overload(T &&, Ts &&...)
+    -> Overload<std::remove_const_t<std::remove_reference_t<T>>,
+                std::remove_const_t<std::remove_reference_t<Ts>>...>;
+
 template <typename... Ts>
 Overload(Ts &&...)
     -> Overload<std::remove_const_t<std::remove_reference_t<Ts>>...>;
