@@ -94,7 +94,7 @@ std::unique_ptr<llvm::TargetMachine> Driver::target(llvm::Module & ir) const
     return target_machine;
 }
 
-std::variant<std::monostate, int64_t, double, char, void *>
+std::variant<std::monostate, int64_t, int32_t, double, char, void *>
 Driver::execute(const llvm::Module & module) const
 {
     std::string llvm_errors;
@@ -141,7 +141,7 @@ Driver::execute(const llvm::Module & module) const
     return std::monostate{};
 }
 
-std::variant<std::monostate, int64_t, double, char, void *>
+std::variant<std::monostate, int64_t, int32_t, double, char, void *>
 Driver::operator()(const std::string_view & src, Execute)
 {
     const auto [context, ir] = compile(src);

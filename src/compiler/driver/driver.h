@@ -112,7 +112,7 @@ public:
 
     ~Driver();
 
-    std::variant<std::monostate, int64_t, double, char, void *>
+    std::variant<std::monostate, int64_t, int32_t, double, char, void *>
     operator()(const std::string_view & src, Execute);
 
     std::pair<std::unique_ptr<llvm::LLVMContext>, std::unique_ptr<llvm::Module>>
@@ -137,7 +137,7 @@ private:
 
     std::unique_ptr<llvm::TargetMachine> target(llvm::Module & ir) const;
 
-    std::variant<std::monostate, int64_t, double, char, void *>
+    std::variant<std::monostate, int64_t, int32_t, double, char, void *>
     execute(const llvm::Module & module) const;
 };
 }  // namespace mk

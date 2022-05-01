@@ -496,7 +496,7 @@ TEST(driver, execute)
     mk::Driver driver;
 
     std::visit(mk::util::Overload(
-                   [](double x) {
+                   [](int32_t x) {
                        ASSERT_EQ(x,
                                  9636 + 1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 + 9 + 10);
                    },
