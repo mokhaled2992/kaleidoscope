@@ -36,11 +36,16 @@ public:
     {
         struct Args
         {
+            struct Object : std::string
+            {
+            };
+            struct Lib : std::string
+            {
+            };
             std::string dynamic_linker;
             std::string outfile;
             std::vector<std::string> paths;
-            std::vector<std::string> objects;
-            std::vector<std::string> libs;
+            std::vector<std::variant<Object, Lib>> links;
 
             virtual std::string extension() const = 0;
             virtual std::vector<std::string> additional_flags() const

@@ -5,6 +5,7 @@
 #include "compiler/parser/parser.h"
 
 #include "util/lld.h"
+#include "util/overload.h"
 
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Bitcode/BitcodeReader.h"
@@ -238,8 +239,13 @@ bool Driver::operator()(const std::string_view & src,
     for (const auto & l : args.paths)
         raw_args.emplace_back(fmt::format("-L{}", l));
 
-    for (const auto & l : args.libs)
-        raw_args.emplace_back(fmt::format("-l{}", l));
+    for (const auto & l : args.links)
+        raw_args.emplace_back(std::visit(
+            util::Overload([](const Elf::Args::Object & o)
+                               -> std::string { return o; },
+                           [](const Elf::Args::Lib & l) -> std::string  //
+                           { return fmt::format("-l{}", l); }),
+            l));
 
     auto additional_flags = args.additional_flags();
     std::move(additional_flags.begin(),
@@ -247,9 +253,6 @@ bool Driver::operator()(const std::string_view & src,
               std::back_inserter(raw_args));
 
     raw_args.emplace_back(fmt::format("{}.o", args.outfile));
-    std::copy(args.objects.cbegin(),
-              args.objects.cend(),
-              std::back_inserter(raw_args));
 
     return lld::elf::ScopedLink{}(raw_args);
 }

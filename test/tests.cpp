@@ -721,10 +721,11 @@ TEST(driver, executable)
     args.dynamic_linker = "/lib64/ld-linux-x86-64.so.2",
     args.outfile = "output";
     args.paths = {"/lib/x86_64-linux-gnu/", "test/lib"};
-    args.objects = {"/lib/x86_64-linux-gnu/crt1.o",
-                    "/lib/x86_64-linux-gnu/crti.o",
-                    "/lib/x86_64-linux-gnu/crtn.o"};
-    args.libs = {"c", "mylib"};
+    args.links = {Driver::Elf::Args::Object{"/lib/x86_64-linux-gnu/crt1.o"},
+                  Driver::Elf::Args::Object{"/lib/x86_64-linux-gnu/crti.o"},
+                  Driver::Elf::Args::Lib{"c"},
+                  Driver::Elf::Args::Object{"/lib/x86_64-linux-gnu/crtn.o"},
+                  Driver::Elf::Args::Lib{"mylib"}};
     args.rpath = {};
 
     ASSERT_TRUE(driver(code, args));
