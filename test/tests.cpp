@@ -544,182 +544,182 @@ TEST(driver, link)
     ASSERT_FALSE(bar->empty());
 }
 
-TEST(driver, object)
-{
-    using namespace std::literals;
-    using namespace mk;
+// TEST(driver, object)
+// {
+//     using namespace std::literals;
+//     using namespace mk;
 
-    const std::string_view code = R"CODE(
-        extern bar(a,b)
-        def foo(a, b)
-            1 + (2*3+a) + 4 * 5 + 6 * b + bar(a,a)
-        def main()
-            foo(4,3)
-    )CODE";
+//     const std::string_view code = R"CODE(
+//         extern bar(a,b)
+//         def foo(a, b)
+//             1 + (2*3+a) + 4 * 5 + 6 * b + bar(a,a)
+//         def main()
+//             foo(4,3)
+//     )CODE";
 
-    Driver driver;
-    Driver::Object::Args args{.outfile = "output"};
-    driver(code, args);
+//     Driver driver;
+//     Driver::Object::Args args{.outfile = "output"};
+//     driver(code, args);
 
-    mk::lld::elf::ScopedLink{}({"ld",
-                                "-dynamic-linker=/lib64/ld-linux-x86-64.so.2",
-                                fmt::format("-o{}.out", args.outfile),
-                                "-L/lib/x86_64-linux-gnu/",
-                                "-Ltest/lib/",
-                                fmt::format("{}.o", args.outfile),
-                                "-lmylib",
-                                "/lib/x86_64-linux-gnu/crt1.o",
-                                "-lc"});
+//     mk::lld::elf::ScopedLink{}({"ld",
+//                                 "-dynamic-linker=/lib64/ld-linux-x86-64.so.2",
+//                                 fmt::format("-o{}.out", args.outfile),
+//                                 "-L/lib/x86_64-linux-gnu/",
+//                                 "-Ltest/lib/",
+//                                 fmt::format("{}.o", args.outfile),
+//                                 "-lmylib",
+//                                 "/lib/x86_64-linux-gnu/crt1.o",
+//                                 "-lc"});
 
-    ASSERT_EQ(
-        Poco::Process::launch(fmt::format("./{}.out", args.outfile), {}).wait(),
-        57);
-}
+//     ASSERT_EQ(
+//         Poco::Process::launch(fmt::format("./{}.out", args.outfile), {}).wait(),
+//         57);
+// }
 
-TEST(driver, shared_library)
-{
-    using namespace std::literals;
-    using namespace mk;
+// TEST(driver, shared_library)
+// {
+//     using namespace std::literals;
+//     using namespace mk;
 
-    const std::string_view code = R"CODE(
-        extern bar(a,b)
-        def foo(a, b)
-            1 + (2*3+a) + 4 * 5 + 6 * b + 42 + 13 + bar(a,b)
-        def main()
-            foo(4,3)
-    )CODE";
+//     const std::string_view code = R"CODE(
+//         extern bar(a,b)
+//         def foo(a, b)
+//             1 + (2*3+a) + 4 * 5 + 6 * b + 42 + 13 + bar(a,b)
+//         def main()
+//             foo(4,3)
+//     )CODE";
 
-    Driver driver;
+//     Driver driver;
 
-    Driver::Library::Shared::Args args;
-    args.dynamic_linker = "/lib64/ld-linux-x86-64.so.2",
-    args.outfile = "output";
+//     Driver::Library::Shared::Args args;
+//     args.dynamic_linker = "/lib64/ld-linux-x86-64.so.2",
+//     args.outfile = "output";
 
-    ASSERT_TRUE(driver(code, args));
+//     ASSERT_TRUE(driver(code, args));
 
-    mk::lld::elf::ScopedLink{}({"ld",
-                                "-dynamic-linker=/lib64/ld-linux-x86-64.so.2",
-                                fmt::format("-o{}.out", args.outfile),
-                                "-L/lib/x86_64-linux-gnu/",
-                                "-Ltest/lib/",
-                                fmt::format("{}.so", args.outfile),
-                                "-lmylib",
-                                "/lib/x86_64-linux-gnu/crt1.o",
-                                "-lc",
-                                "-rpath=."});
+//     mk::lld::elf::ScopedLink{}({"ld",
+//                                 "-dynamic-linker=/lib64/ld-linux-x86-64.so.2",
+//                                 fmt::format("-o{}.out", args.outfile),
+//                                 "-L/lib/x86_64-linux-gnu/",
+//                                 "-Ltest/lib/",
+//                                 fmt::format("{}.so", args.outfile),
+//                                 "-lmylib",
+//                                 "/lib/x86_64-linux-gnu/crt1.o",
+//                                 "-lc",
+//                                 "-rpath=."});
 
-    ASSERT_EQ(
-        Poco::Process::launch(fmt::format("./{}.out", args.outfile), {}).wait(),
-        111);
-}
+//     ASSERT_EQ(
+//         Poco::Process::launch(fmt::format("./{}.out", args.outfile), {}).wait(),
+//         111);
+// }
 
-TEST(driver, bitcode)
-{
-    using namespace std::literals;
-    using namespace mk;
+// TEST(driver, bitcode)
+// {
+//     using namespace std::literals;
+//     using namespace mk;
 
-    const std::string_view code = R"CODE(
-        extern bar(a,b)
-        def foo(a, b)
-            1 + (2*3+a) + 4 * 5 + 6 * b + 42 - b - bar(a,b)
-        def main()
-            foo(4,3)
-    )CODE";
+//     const std::string_view code = R"CODE(
+//         extern bar(a,b)
+//         def foo(a, b)
+//             1 + (2*3+a) + 4 * 5 + 6 * b + 42 - b - bar(a,b)
+//         def main()
+//             foo(4,3)
+//     )CODE";
 
-    Driver driver;
-    Driver::Bitcode::Args args;
-    args.outfile = "output";
-    driver(code, args);
+//     Driver driver;
+//     Driver::Bitcode::Args args;
+//     args.outfile = "output";
+//     driver(code, args);
 
-    ASSERT_EQ(Poco::Process::launch("toolstack/bin/llc",
-                                    {"-filetype=obj",
-                                     fmt::format("{}.bc", args.outfile),
-                                     "-o",
-                                     fmt::format("{}.o", args.outfile)})
-                  .wait(),
-              0);
+//     ASSERT_EQ(Poco::Process::launch("toolstack/bin/llc",
+//                                     {"-filetype=obj",
+//                                      fmt::format("{}.bc", args.outfile),
+//                                      "-o",
+//                                      fmt::format("{}.o", args.outfile)})
+//                   .wait(),
+//               0);
 
-    mk::lld::elf::ScopedLink{}({"ld",
-                                "-dynamic-linker=/lib64/ld-linux-x86-64.so.2",
-                                fmt::format("-o{}.out", args.outfile),
-                                "-L/lib/x86_64-linux-gnu/",
-                                "-Ltest/lib/",
-                                fmt::format("{}.o", args.outfile),
-                                "-lmylib",
-                                "/lib/x86_64-linux-gnu/crt1.o",
-                                "-lc",
-                                "-rpath=."});
+//     mk::lld::elf::ScopedLink{}({"ld",
+//                                 "-dynamic-linker=/lib64/ld-linux-x86-64.so.2",
+//                                 fmt::format("-o{}.out", args.outfile),
+//                                 "-L/lib/x86_64-linux-gnu/",
+//                                 "-Ltest/lib/",
+//                                 fmt::format("{}.o", args.outfile),
+//                                 "-lmylib",
+//                                 "/lib/x86_64-linux-gnu/crt1.o",
+//                                 "-lc",
+//                                 "-rpath=."});
 
-    ASSERT_EQ(
-        Poco::Process::launch(fmt::format("./{}.out", args.outfile), {}).wait(),
-        81);
-}
+//     ASSERT_EQ(
+//         Poco::Process::launch(fmt::format("./{}.out", args.outfile), {}).wait(),
+//         81);
+// }
 
-TEST(driver, ir)
-{
-    using namespace std::literals;
-    using namespace mk;
+// TEST(driver, ir)
+// {
+//     using namespace std::literals;
+//     using namespace mk;
 
-    const std::string_view code = R"CODE(
-        extern bar(a,b)
-        def foo(a, b)
-            1 + (2*3+a) + 4 * 5 + 6 * b + 42 - b - bar(b,b)
-        def main()
-            foo(4,3)
-    )CODE";
+//     const std::string_view code = R"CODE(
+//         extern bar(a,b)
+//         def foo(a, b)
+//             1 + (2*3+a) + 4 * 5 + 6 * b + 42 - b - bar(b,b)
+//         def main()
+//             foo(4,3)
+//     )CODE";
 
-    Driver driver;
-    Driver::IR::Args args;
-    args.outfile = "output";
-    driver(code, args);
+//     Driver driver;
+//     Driver::IR::Args args;
+//     args.outfile = "output";
+//     driver(code, args);
 
-    ASSERT_EQ(Poco::Process::launch("toolstack/bin/llc",
-                                    {"-filetype=obj",
-                                     fmt::format("{}.ll", args.outfile),
-                                     "-o",
-                                     fmt::format("{}.o", args.outfile)})
-                  .wait(),
-              0);
+//     ASSERT_EQ(Poco::Process::launch("toolstack/bin/llc",
+//                                     {"-filetype=obj",
+//                                      fmt::format("{}.ll", args.outfile),
+//                                      "-o",
+//                                      fmt::format("{}.o", args.outfile)})
+//                   .wait(),
+//               0);
 
-    mk::lld::elf::ScopedLink{}({"ld",
-                                "-dynamic-linker=/lib64/ld-linux-x86-64.so.2",
-                                fmt::format("-o{}.out", args.outfile),
-                                "-L/lib/x86_64-linux-gnu/",
-                                "-Ltest/lib/",
-                                fmt::format("{}.o", args.outfile),
-                                "-lmylib",
-                                "/lib/x86_64-linux-gnu/crt1.o",
-                                "-lc",
-                                "-rpath=."});
+//     mk::lld::elf::ScopedLink{}({"ld",
+//                                 "-dynamic-linker=/lib64/ld-linux-x86-64.so.2",
+//                                 fmt::format("-o{}.out", args.outfile),
+//                                 "-L/lib/x86_64-linux-gnu/",
+//                                 "-Ltest/lib/",
+//                                 fmt::format("{}.o", args.outfile),
+//                                 "-lmylib",
+//                                 "/lib/x86_64-linux-gnu/crt1.o",
+//                                 "-lc",
+//                                 "-rpath=."});
 
-    ASSERT_EQ(
-        Poco::Process::launch(fmt::format("./{}.out", args.outfile), {}).wait(),
-        82);
-}
+//     ASSERT_EQ(
+//         Poco::Process::launch(fmt::format("./{}.out", args.outfile), {}).wait(),
+//         82);
+// }
 
-TEST(driver, executable)
-{
-    using namespace std::literals;
-    using namespace mk;
+// TEST(driver, executable)
+// {
+//     using namespace std::literals;
+//     using namespace mk;
 
-    const std::string_view code = R"CODE(
-        extern bar(a,b)
-        def main()
-            1 + (2*3+4) + 4 * 5 + 6 * 3 + 42 - 3 - 33 + bar(1,2)
-    )CODE";
+//     const std::string_view code = R"CODE(
+//         extern bar(a,b)
+//         def main()
+//             1 + (2*3+4) + 4 * 5 + 6 * 3 + 42 - 3 - 33 + bar(1,2)
+//     )CODE";
 
-    Driver driver;
-    Driver::Executable::Args args;
-    args.dynamic_linker = "/lib64/ld-linux-x86-64.so.2",
-    args.outfile = "output";
-    args.paths = {"/lib/x86_64-linux-gnu/", "test/lib"};
-    args.objects = {"/lib/x86_64-linux-gnu/crt1.o"};
-    args.libs = {"c", "mylib"};
-    args.rpath = {};
+//     Driver driver;
+//     Driver::Executable::Args args;
+//     args.dynamic_linker = "/lib64/ld-linux-x86-64.so.2",
+//     args.outfile = "output";
+//     args.paths = {"/lib/x86_64-linux-gnu/", "test/lib"};
+//     args.objects = {"/lib/x86_64-linux-gnu/crt1.o"};
+//     args.libs = {"c", "mylib"};
+//     args.rpath = {};
 
-    ASSERT_TRUE(driver(code, args));
+//     ASSERT_TRUE(driver(code, args));
 
-    ASSERT_EQ(
-        Poco::Process::launch(fmt::format("./{}.out", args.outfile), {}).wait(),
-        58);
-}
+//     ASSERT_EQ(
+//         Poco::Process::launch(fmt::format("./{}.out", args.outfile), {}).wait(),
+//         58);
+// }
