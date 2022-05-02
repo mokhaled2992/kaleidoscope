@@ -570,7 +570,7 @@ TEST(driver, object)
                                 "-lmylib",
                                 "/lib/x86_64-linux-gnu/crt1.o",
                                 "/lib/x86_64-linux-gnu/crti.o",
-                                "-lc"
+                                "-lc",
                                 "/lib/x86_64-linux-gnu/crtn.o"});
 
     ASSERT_EQ(
@@ -608,8 +608,8 @@ TEST(driver, shared_library)
                                 "-lmylib",
                                 "/lib/x86_64-linux-gnu/crt1.o",
                                 "/lib/x86_64-linux-gnu/crti.o",
-                                "-lc"
-                                "/lib/x86_64-linux-gnu/crtn.o"
+                                "-lc",
+                                "/lib/x86_64-linux-gnu/crtn.o",
                                 "-rpath=."});
 
     ASSERT_EQ(
@@ -652,8 +652,8 @@ TEST(driver, bitcode)
                                 "-lmylib",
                                 "/lib/x86_64-linux-gnu/crt1.o",
                                 "/lib/x86_64-linux-gnu/crti.o",
-                                "-lc"
-                                "/lib/x86_64-linux-gnu/crtn.o"
+                                "-lc",
+                                "/lib/x86_64-linux-gnu/crtn.o",
                                 "-rpath=."});
 
     ASSERT_EQ(
@@ -696,8 +696,8 @@ TEST(driver, ir)
                                 "-lmylib",
                                 "/lib/x86_64-linux-gnu/crt1.o",
                                 "/lib/x86_64-linux-gnu/crti.o",
-                                "-lc"
-                                "/lib/x86_64-linux-gnu/crtn.o"
+                                "-lc",
+                                "/lib/x86_64-linux-gnu/crtn.o",
                                 "-rpath=."});
 
     ASSERT_EQ(
